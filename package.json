@@ -1,0 +1,25 @@
+{
+  "scripts": {
+    "mock": "node mockoon/server.js",
+    "frontend": "npx --yes serve frontend -p 5173",
+    "start": "node mockoon/server.js",
+    "api": "cd backend && go run ./cmd/api",
+    "db:up": "cd backend && docker compose up -d",
+    "db:down": "cd backend && docker compose down",
+    "seed": "cd backend && go run ./cmd/seed",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
+  },
+  "dependencies": {
+    "tailwind": "^4.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@eslint/json": "^2.1.0",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.9"
+  }
+}

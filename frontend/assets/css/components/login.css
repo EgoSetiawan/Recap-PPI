@@ -1,0 +1,45 @@
+@layer components {
+  .login-page {
+    @apply flex min-h-screen items-center justify-center p-6;
+  }
+
+  .login-hero {
+    @apply hidden;
+  }
+
+  .login-panel {
+    @apply w-full max-w-[420px];
+  }
+
+  .login-box {
+    @apply rounded-2xl border border-border bg-surface/95 p-7 shadow-md backdrop-blur-sm;
+  }
+
+  .login-box .system-name {
+    @apply mb-1.5 text-[11px] font-semibold tracking-[0.06em] text-muted uppercase;
+  }
+
+  .login-box h2 {
+    @apply mb-1.5 text-xl tracking-tight;
+  }
+
+  .login-box > p {
+    @apply mb-5 text-[13px] text-muted;
+  }
+
+  .demo-accounts {
+    @apply mt-5 rounded-xl border border-border bg-surface-alt px-3.5 py-3 text-xs text-muted;
+  }
+
+  .demo-accounts strong {
+    @apply mb-2 block text-xs font-semibold text-text;
+  }
+
+  .demo-accounts button {
+    @apply block min-h-(--spacing-touch) w-full cursor-pointer rounded-lg border-0 bg-transparent px-2 py-2.5 text-left text-xs text-primary transition-colors duration-150;
+  }
+
+  .demo-accounts button:hover {
+    @apply bg-primary-soft no-underline;
+  }
+}

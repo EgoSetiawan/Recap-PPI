@@ -1,0 +1,279 @@
+/* Responsive shell & layout */
+
+@media (min-width: 1440px) {
+  :root {
+    --width-content-max: 1360px;
+    --width-sidebar: 272px;
+  }
+
+  .content {
+    @apply px-8 pt-6 pb-10;
+  }
+
+  .stat-grid {
+    @apply gap-4;
+  }
+}
+
+@media (min-width: 1024px) {
+  .modal-backdrop {
+    @apply items-center p-5;
+  }
+
+  .modal {
+    @apply w-[min(520px,100%)] rounded-2xl;
+  }
+
+  .modal-footer {
+    @apply flex-row justify-end;
+  }
+
+  .modal-footer .btn {
+    @apply w-auto;
+  }
+
+  .toast-container {
+    @apply left-auto;
+  }
+}
+
+@media (max-width: 1023px) {
+  .insp-actions-sticky {
+    @apply sticky bottom-0 z-[5] -mx-4 -mb-3.5 border-t border-border bg-surface/95 px-4 py-3.5 shadow-[0_-8px_24px_rgba(26,40,56,0.08)] backdrop-blur-sm;
+  }
+
+  .nav-toggle,
+  .sidebar-close {
+    @apply inline-flex;
+  }
+
+  .sidebar {
+    @apply fixed top-0 left-0 h-screen w-[min(288px,86vw)] shadow-none transition-transform duration-200 ease-out;
+    transform: translateX(-105%);
+  }
+
+  body.nav-open .sidebar {
+    transform: translateX(0);
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.22);
+  }
+
+  body.nav-open .nav-overlay {
+    @apply block;
+  }
+
+  .sidebar a.nav-link {
+    @apply min-h-(--spacing-touch);
+  }
+
+  .topbar-brand {
+    @apply block;
+  }
+
+  .topbar-search,
+  .btn-logout-full {
+    @apply hidden;
+  }
+
+  .user-chip {
+    @apply inline-flex;
+  }
+
+  .notif-label {
+    @apply hidden;
+  }
+
+  .notif-icon {
+    @apply inline;
+  }
+
+  #btn-notif {
+    @apply min-h-(--spacing-touch) min-w-(--spacing-touch) px-2.5 py-0;
+  }
+
+  .content {
+    @apply px-4 pt-4 pb-7;
+  }
+
+  .stat-grid {
+    @apply grid-cols-2 gap-3;
+  }
+
+  .insp-actions {
+    @apply flex-col-reverse;
+  }
+
+  .insp-actions .btn {
+    @apply min-h-(--spacing-touch) w-full;
+  }
+
+  h1 {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 767px) {
+  h1 {
+    font-size: 22px;
+  }
+
+  .sidebar {
+    @apply w-[min(300px,88vw)];
+  }
+
+  body.nav-open .sidebar {
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.28);
+  }
+
+  .sidebar a.nav-link {
+    @apply text-sm;
+  }
+
+  .topbar {
+    @apply gap-2 px-3 py-2;
+  }
+
+  .topbar-brand {
+    @apply block flex-1;
+  }
+
+  .content {
+    @apply px-3.5 pt-3.5 pb-8;
+  }
+
+  .breadcrumb-full {
+    @apply hidden;
+  }
+
+  .breadcrumb-back {
+    @apply inline-flex;
+  }
+
+  .page-header {
+    @apply flex-col items-stretch;
+  }
+
+  .page-header .btn,
+  .page-header > .btn {
+    @apply min-h-(--spacing-touch) w-full;
+  }
+
+  .stat-grid {
+    @apply grid-cols-1 gap-2.5;
+  }
+
+  .stat-card .value {
+    @apply text-2xl;
+  }
+
+  .grid-2,
+  .form-row,
+  .dl-grid {
+    @apply grid-cols-1;
+  }
+
+  .filters {
+    @apply grid-cols-1;
+  }
+
+  .filters .form-group input,
+  .filters .form-group select {
+    @apply min-h-(--spacing-touch);
+  }
+
+  .checklist-item {
+    @apply grid-cols-1;
+  }
+
+  .checklist-item .choices {
+    @apply w-full;
+  }
+
+  .checklist-item .choice {
+    @apply flex-1;
+  }
+
+  .insp-actions {
+    @apply flex-col-reverse items-stretch;
+  }
+
+  .bar-row {
+    @apply grid-cols-1 gap-1;
+  }
+
+  .bar-row strong {
+    @apply justify-self-start;
+  }
+
+  .bar-list {
+    @apply min-h-40;
+  }
+
+  .detail-header {
+    @apply flex-col;
+  }
+
+  .detail-actions {
+    @apply w-full;
+  }
+
+  .detail-actions .btn {
+    @apply min-h-(--spacing-touch) flex-1;
+  }
+
+  .photo-grid {
+    @apply grid-cols-1;
+  }
+
+  .login-page {
+    @apply items-start p-4 pt-10;
+  }
+
+  .login-box {
+    @apply p-5;
+  }
+
+  .login-box .btn {
+    @apply min-h-(--spacing-touch);
+  }
+
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .show-mobile {
+    @apply block;
+  }
+
+  .desktop-table {
+    @apply hidden;
+  }
+
+  .mobile-card-list {
+    @apply flex;
+  }
+
+  table.data th.hide-sm,
+  table.data td.hide-sm {
+    @apply hidden;
+  }
+
+  .modal-backdrop {
+    @apply items-stretch;
+  }
+
+  .modal {
+    @apply h-full max-h-screen rounded-none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .btn,
+  .icon-btn,
+  .toast,
+  .choice,
+  .bar-fill {
+    transition: none !important;
+    animation: none !important;
+  }
+}
