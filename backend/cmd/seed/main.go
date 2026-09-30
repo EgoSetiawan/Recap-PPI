@@ -54,7 +54,7 @@ func main() {
 
 	if _, err := db.Exec(`
 		TRUNCATE
-			rooms,d
+			rooms,
 			users,
 			roles
 		RESTART IDENTITY CASCADE

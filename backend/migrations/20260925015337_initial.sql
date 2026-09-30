@@ -108,6 +108,11 @@ CREATE TABLE inspection_signatures (
     UNIQUE (inspection_id, role)
 );
 
+CREATE TABLE token_blacklist (
+    jti        TEXT PRIMARY KEY,
+    expires_at TIMESTAMPTZ NOT NULL
+);
+
 CREATE INDEX idx_users_role_id
     ON users(role_id);
 
@@ -126,9 +131,12 @@ CREATE INDEX idx_inspections_month
 CREATE INDEX idx_inspection_checklist_items_inspection_date
     ON inspection_checklist_items(inspection_id, answer_date);
 
+CREATE INDEX idx_token_blacklist_expires 
+    ON token_blacklist(expires_at);
 
 -- +goose Down
 
+DROP TABLE IF EXISTS token_blacklist;
 DROP TABLE IF EXISTS inspection_signatures;
 DROP TABLE IF EXISTS inspection_checklist_items;
 DROP TABLE IF EXISTS inspections;

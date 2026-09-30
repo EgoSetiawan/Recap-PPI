@@ -70,8 +70,6 @@ func main() {
 		authed.GET("/inspections/:id", h.GetInspection)
 	}
 
-	authed.Use(middleware.Auth(cfg.JWTSecret, repo, repo))
-
 	addr := ":" + cfg.Port
 	log.Printf("Room Inspection API listening on http://localhost%s", addr)
 	log.Printf("Health: http://localhost%s/api/health", addr)

@@ -92,7 +92,6 @@ func (h *Handler) GetInspection(c *gin.Context) {
 
 func (h *Handler) ListInspections(c *gin.Context) {
 	var roomID *int64
-
 	if v := c.Query("room_id"); v != "" {
 		id, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
@@ -104,12 +103,9 @@ func (h *Handler) ListInspections(c *gin.Context) {
 			)
 			return
 		}
-
 		roomID = &id
 	}
-
 	var month *time.Time
-
 	if v := c.Query("month"); v != "" {
 		t, err := time.Parse("2006-01-02", v)
 		if err != nil {
@@ -121,10 +117,8 @@ func (h *Handler) ListInspections(c *gin.Context) {
 			)
 			return
 		}
-
 		month = &t
 	}
-
 	list, err := h.Svc.ListInspections(
 		middleware.CurrentUser(c),
 		roomID,
@@ -135,6 +129,5 @@ func (h *Handler) ListInspections(c *gin.Context) {
 		response.Fail(c, err)
 		return
 	}
-
 	response.OK(c, list, "Inspections retrieved")
 }
