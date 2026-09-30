@@ -57,3 +57,84 @@ func (h *Handler) Logout(c *gin.Context) {
 func (h *Handler) Me(c *gin.Context) {
 	response.OK(c, h.Svc.Me(middleware.CurrentUser(c)), "Profile retrieved")
 }
+
+func (h *Handler) CreateInspection(c *gin.Context) {
+	var in service.CreateInspectionInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.FailCode(
+			c,
+			"INVALID_JSON",
+			"Invalid JSON",
+			http.StatusBadRequest,
+		)
+		return
+	}
+	ins, err := h.Svc.CreateInspection(
+		middleware.CurrentUser(c),
+		in,
+	)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Created(c, ins, "Inspection created")
+}
+
+func (h *Handler) GetInspection(c *gin.Context) {
+	id, _ := parseID(c, "id")
+	ins, err := h.Svc.GetInspection(middleware.CurrentUser(c), id)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, ins, "Inspection retrieved")
+}
+
+func (h *Handler) ListInspections(c *gin.Context) {
+	var roomID *int64
+
+	if v := c.Query("room_id"); v != "" {
+		id, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			response.FailCode(
+				c,
+				"INVALID_ROOM_ID",
+				"Invalid room_id",
+				http.StatusBadRequest,
+			)
+			return
+		}
+
+		roomID = &id
+	}
+
+	var month *time.Time
+
+	if v := c.Query("month"); v != "" {
+		t, err := time.Parse("2006-01-02", v)
+		if err != nil {
+			response.FailCode(
+				c,
+				"INVALID_MONTH",
+				"Invalid month format, use YYYY-MM-DD",
+				http.StatusBadRequest,
+			)
+			return
+		}
+
+		month = &t
+	}
+
+	list, err := h.Svc.ListInspections(
+		middleware.CurrentUser(c),
+		roomID,
+		c.Query("status"),
+		month,
+	)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.OK(c, list, "Inspections retrieved")
+}

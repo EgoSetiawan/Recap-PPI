@@ -63,8 +63,13 @@ func main() {
 	api.GET("/health", h.Health)
 	// api.POST("/dev/reset", h.DevReset)
 	api.POST("/auth/login", middleware.LoginRateLimit(20, time.Minute), h.Login)
-
 	authed := api.Group("")
+	authed.Use(middleware.Auth(cfg.JWTSecret, repo, repo))
+	{
+		authed.GET("/inspections", h.ListInspections)
+		authed.GET("/inspections/:id", h.GetInspection)
+	}
+
 	authed.Use(middleware.Auth(cfg.JWTSecret, repo, repo))
 
 	addr := ":" + cfg.Port

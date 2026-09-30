@@ -28,7 +28,7 @@ type Service struct {
 }
 
 func New(repo *repository.Repo, jwtSecret string, ttl time.Duration, appEnv, seedPath string) *Service {
-	// uploadDir string
+	// uploadDir
 	return &Service{
 		Repo:      repo,
 		JWTSecret: jwtSecret,
@@ -65,6 +65,32 @@ func uid(u *model.User) *int64 {
 type LoginInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+func scopeRoomIDs(u *model.User) []int64 {
+	if u == nil {
+		return nil
+	}
+	if auth.IsRoomScoped(u.Role) {
+		if u.AssignedRoomIDs == nil {
+			return []int64{}
+		}
+		return u.AssignedRoomIDs
+	}
+	return nil // nil = no filter (all rooms)
+}
+
+func assertRoomAccess(u *model.User, roomID int64) error {
+	scope := scopeRoomIDs(u)
+	if scope == nil {
+		return nil
+	}
+	for _, id := range scope {
+		if id == roomID {
+			return nil
+		}
+	}
+	return response.Err("FORBIDDEN", "Akses ruangan di luar scope", http.StatusForbidden)
 }
 
 func (s *Service) Login(in LoginInput, ip string) (map[string]interface{}, error) {

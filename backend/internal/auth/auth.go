@@ -23,6 +23,11 @@ func CheckPassword(hash, password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
+func IsRoomScoped(role string) bool {
+	r := NormalizeRole(role)
+	return r == RoleAnggota // for assign room head, only head of room can be assigned
+}
+
 func IssueToken(secret string, ttl time.Duration, userID int64, role, jti string) (string, time.Time, error) {
 	exp := time.Now().Add(ttl)
 	claims := Claims{
