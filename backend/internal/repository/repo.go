@@ -137,12 +137,15 @@ func (r *Repo) GetByEmail(email string) (*model.User, error) {
 // --- Rooms ---
 
 const roomSelect = `
-SELECT r.id, r.building_id, r.name, r.code, r.room_type, r.floor, r.description, r.status, r.condition,
-       r.last_inspection_at, r.next_inspection_at, r.created_at, r.updated_at,
-       b.name, b.code, h.name, h.code
-FROM rooms r
-JOIN buildings b ON b.id = r.building_id
-JOIN hospitals h ON h.id = b.hospital_id`
+SELECT
+    r.id,
+    r.name,
+    r.code,
+    r.room_type,
+    r.description,
+    r.created_at,
+    r.updated_at
+FROM rooms r`
 
 func (r *Repo) scanRoom(rows interface{ Scan(dest ...any) error }) (*model.Room, error) {
 	var room model.Room
@@ -168,15 +171,10 @@ func (r *Repo) scanRoom(rows interface{ Scan(dest ...any) error }) (*model.Room,
 	return &room, nil
 }
 
-func (r *Repo) ListRooms(buildingID *int64, status, condition, q string, scopeIDs []int64) ([]model.Room, error) {
+func (r *Repo) ListRooms(status, condition, q string, scopeIDs []int64) ([]model.Room, error) {
 	var conds []string
 	var args []interface{}
 	n := 1
-	if buildingID != nil {
-		conds = append(conds, fmt.Sprintf("r.building_id=$%d", n))
-		args = append(args, *buildingID)
-		n++
-	}
 	if status != "" {
 		conds = append(conds, fmt.Sprintf("r.status=$%d", n))
 		args = append(args, status)

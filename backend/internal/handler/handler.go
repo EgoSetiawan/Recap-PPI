@@ -131,3 +131,12 @@ func (h *Handler) ListInspections(c *gin.Context) {
 	}
 	response.OK(c, list, "Inspections retrieved")
 }
+
+func (h *Handler) Dashboard(c *gin.Context) {
+	data, err := h.Svc.Dashboard(middleware.CurrentUser(c))
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, data, "Dashboard retrieved")
+}

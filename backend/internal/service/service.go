@@ -124,3 +124,114 @@ func (s *Service) Logout(jti string, exp time.Time) error {
 func (s *Service) Me(u *model.User) *model.User {
 	return publicUser(u)
 }
+
+//--- OPS ---//
+
+func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
+	if actor == nil {
+		return nil, response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
+	scope := scopeRoomIDs(actor)
+	rooms, err := s.Repo.ListRooms(
+		"",
+		"",
+		"",
+		scope,
+	)
+	if err != nil {
+		return nil, err
+	}
+	inspections, err := s.Repo.ListInspections(
+		repository.InspectionFilter{
+			ScopeIDs: scope,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	currentMonth := time.Date(
+		now.Year(),
+		now.Month(),
+		1,
+		0, 0, 0, 0,
+		time.UTC,
+	)
+	// Monthly inspection statistics.
+	monthlyInspections := 0
+	open := 0
+	submitted := 0
+	approved := 0
+	rejected := 0
+	for _, ins := range inspections {
+		if ins.InspectionMonth.Year() != currentMonth.Year() ||
+			ins.InspectionMonth.Month() != currentMonth.Month() {
+			continue
+		}
+		monthlyInspections++
+		switch ins.Status {
+		case StatusOpen:
+			open++
+		case StatusSubmitted:
+			submitted++
+		case StatusApproved:
+			approved++
+		case StatusRejected:
+			rejected++
+		}
+	}
+	// Get latest inspection for each room.
+	latestByRoom := map[int64]model.Inspection{}
+	for _, ins := range inspections {
+		if _, exists := latestByRoom[ins.RoomID]; !exists {
+			latestByRoom[ins.RoomID] = ins
+		}
+	}
+	roomRows := make([]map[string]interface{}, 0, len(rooms))
+	for _, room := range rooms {
+		row := map[string]interface{}{
+			"id":          room.ID,
+			"code":        room.Code,
+			"name":        room.Name,
+			"room_type":   room.RoomType,
+			"description": room.Description,
+		}
+		if latest, ok := latestByRoom[room.ID]; ok {
+			row["inspection_month"] = latest.InspectionMonth
+			row["inspection_status"] = latest.Status
+			row["inspection_id"] = latest.ID
+		} else {
+			row["inspection_month"] = nil
+			row["inspection_status"] = nil
+			row["inspection_id"] = nil
+		}
+		roomRows = append(roomRows, row)
+	}
+
+	// Recent inspections.
+	recent := make([]model.Inspection, 0, 15)
+	for _, ins := range inspections {
+		if len(recent) >= 15 {
+			break
+		}
+		recent = append(recent, ins)
+	}
+	return map[string]interface{}{
+		"role": actor.Role,
+
+		"totals": map[string]int{
+			"rooms":             len(rooms),
+			"inspections_month": monthlyInspections,
+			"open":              open,
+			"submitted":         submitted,
+			"approved":          approved,
+			"rejected":          rejected,
+		},
+		"recent_inspections": recent,
+		"room_monitor":       roomRows,
+	}, nil
+}

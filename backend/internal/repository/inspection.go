@@ -83,7 +83,6 @@ func (r *Repo) loadInspectionExtras(ins *model.Inspection, full bool) error {
 			return err
 		}
 	}
-
 	// Load signatures.
 	srows, err := r.DB.Query(`
 		SELECT
