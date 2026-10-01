@@ -136,6 +136,7 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 		)
 	}
 	scope := scopeRoomIDs(actor)
+	// Get rooms available to this user.
 	rooms, err := s.Repo.ListRooms(
 		"",
 		"",
@@ -145,6 +146,7 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Get inspections available to this user.
 	inspections, err := s.Repo.ListInspections(
 		repository.InspectionFilter{
 			ScopeIDs: scope,
@@ -153,6 +155,7 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Current month.
 	now := time.Now().UTC()
 	currentMonth := time.Date(
 		now.Year(),
@@ -184,13 +187,28 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 			rejected++
 		}
 	}
-	// Get latest inspection for each room.
-	latestByRoom := map[int64]model.Inspection{}
-	for _, ins := range inspections {
-		if _, exists := latestByRoom[ins.RoomID]; !exists {
-			latestByRoom[ins.RoomID] = ins
-		}
+	// Map room ID -> room.
+	roomByID := make(map[int64]model.Room, len(rooms))
+
+	for _, room := range rooms {
+		roomByID[room.ID] = room
 	}
+	// Get latest inspection for each room.
+	// ListInspections() is ordered by month DESC, id DESC,
+	// so the first inspection found for a room is its latest one.
+	latestByRoom := make(map[int64]model.Inspection)
+	for _, ins := range inspections {
+		if _, exists := latestByRoom[ins.RoomID]; exists {
+			continue
+		}
+		// Attach room information.
+		if room, exists := roomByID[ins.RoomID]; exists {
+			roomCopy := room
+			ins.Room = &roomCopy
+		}
+		latestByRoom[ins.RoomID] = ins
+	}
+	// Room monitoring.
 	roomRows := make([]map[string]interface{}, 0, len(rooms))
 	for _, room := range rooms {
 		row := map[string]interface{}{
@@ -209,14 +227,19 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 			row["inspection_status"] = nil
 			row["inspection_id"] = nil
 		}
+
 		roomRows = append(roomRows, row)
 	}
-
 	// Recent inspections.
 	recent := make([]model.Inspection, 0, 15)
 	for _, ins := range inspections {
 		if len(recent) >= 15 {
 			break
+		}
+		// Attach room information.
+		if room, exists := roomByID[ins.RoomID]; exists {
+			roomCopy := room
+			ins.Room = &roomCopy
 		}
 		recent = append(recent, ins)
 	}

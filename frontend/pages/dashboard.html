@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard — Pemeriksaan Ruangan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/app.css" />
+  <script src="../assets/js/config.js"></script>
+</head>
+<body>
+  <div id="app">
+    <div class="page-header mb-3 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1>Dashboard</h1>
+        <p id="dash-subtitle" class="page-meta">Ringkasan pemeriksaan ruangan.</p>
+      </div>
+    </div>
+    <div id="stats" class="stat-grid"></div>
+    <div class="section" style="margin-top:12px">
+      <div class="section-header">Hasil penilaian</div>
+      <div class="section-body"><div id="condition-bars" class="bar-list"></div></div>
+    </div>
+    <div class="section" style="margin-top:12px">
+      <div class="section-header" style="display:flex;justify-content:space-between;align-items:center">
+        <span id="list-title">Pemeriksaan terbaru</span>
+        <span id="inspector-actions"></span>
+      </div>
+      <div class="section-body" style="padding:0" id="critical-list"></div>
+    </div>
+  </div>
+  <script type="module" src="../assets/js/pages/dashboard.js"></script>
+</body>
+</html>
