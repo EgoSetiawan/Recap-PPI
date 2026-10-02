@@ -1,10 +1,6 @@
-import { requireAuth, api } from '../api.js';
-import { mountShell, toast } from '../components/shell.js';
-import {
-  escapeHtml,
-  formatDate,
-  statusBadge,
-} from '../utils/format.js';
+import { requireAuth, api } from "../api.js";
+import { mountShell, toast } from "../components/shell.js";
+import { escapeHtml, formatDate } from "../utils/format.js";
 import {
   btn,
   btnSecondary,
@@ -12,78 +8,108 @@ import {
   tableWrap,
   empty,
   statCard,
-} from '../ui.js';
+  badge,
+} from "../ui.js";
+
+function inspectionStatusBadge(status) {
+  const map = {
+    OPEN: {
+      kind: "warn",
+      label: "Open",
+    },
+    SUBMITTED: {
+      kind: "info",
+      label: "Menunggu Review",
+    },
+    APPROVED: {
+      kind: "good",
+      label: "Disetujui",
+    },
+    REJECTED: {
+      kind: "danger",
+      label: "Ditolak",
+    },
+  };
+
+  const item = map[status] || {
+    kind: "muted",
+    label: status || "—",
+  };
+
+  return `<span class="${badge(item.kind)}">${escapeHtml(item.label)}</span>`;
+}
 
 async function main() {
   const user = await requireAuth();
+
   if (!user) return;
 
-  await mountShell('dashboard.html', {
+  await mountShell("dashboard.html", {
     breadcrumb: `<a href="dashboard.html">Beranda</a><span>/</span>Dashboard`,
   });
 
   try {
-    const { data } = await api('/dashboard');
+    const { data } = await api("/dashboard");
 
     const totals = data.totals || {};
-    const isAnggota = user.role === 'ANGGOTA';
+    const isAnggota = user.role === "ANGGOTA";
 
     // Subtitle
-    document.getElementById('dash-subtitle').textContent =
-      isAnggota
-        ? 'Ringkasan ruangan dan pemeriksaan yang menjadi tanggung jawab Anda.'
-        : 'Monitoring ruangan dan pemeriksaan.';
+    document.getElementById("dash-subtitle").textContent = isAnggota
+      ? "Ringkasan ruangan dan pemeriksaan yang menjadi tanggung jawab Anda."
+      : "Monitoring ruangan dan pemeriksaan.";
 
     // Statistics
     const cards = [
       {
-        label: 'Total Ruangan',
+        label: "Total Ruangan",
         value: totals.rooms,
       },
       {
-        label: 'Pemeriksaan Bulan Ini',
+        label: "Pemeriksaan Bulan Ini",
         value: totals.inspections_month,
       },
       {
-        label: 'Open',
+        label: "Open",
         value: totals.open,
       },
       {
-        label: 'Menunggu Review',
+        label: "Menunggu Review",
         value: totals.submitted,
       },
       {
-        label: 'Disetujui',
+        label: "Disetujui",
         value: totals.approved,
       },
     ];
 
-    document.getElementById('stats').innerHTML = cards
+    document.getElementById("stats").innerHTML = cards
       .map(
         (s) => `
           <div class="${statCard}">
-            <div class="label">${s.label}</div>
+            <div class="label">${escapeHtml(s.label)}</div>
             <div class="value">${s.value ?? 0}</div>
           </div>
-        `
+        `,
       )
-      .join('');
+      .join("");
 
     // Anggota action
-    document.getElementById('inspector-actions').innerHTML =
-      isAnggota
-        ? `<a class="${btn} ${btnSm}" href="inspection.html">
-             Mulai Pemeriksaan
-           </a>`
-        : '';
+    document.getElementById("inspector-actions").innerHTML = isAnggota
+      ? `
+        <a class="${btn} ${btnSm}" href="inspection.html">
+          Mulai Pemeriksaan
+        </a>
+      `
+      : "";
 
     // Recent inspections
-    document.getElementById('list-title').textContent =
-      'Pemeriksaan Terbaru';
+    document.getElementById("list-title").textContent =
+      "Pemeriksaan Terbaru";
 
     const rows = data.recent_inspections || [];
 
-    document.getElementById('critical-list').innerHTML = `
+    document.getElementById("critical-list").innerHTML = `
       <div class="${tableWrap}">
         <table class="data" style="border:none">
           <thead>
@@ -106,11 +132,11 @@ async function main() {
                       </td>
 
                       <td>
-                        ${escapeHtml(i.room?.name || '-')}
+                        ${escapeHtml(i.room?.name || "-")}
                       </td>
 
                       <td>
-                        ${statusBadge(i.status)}
+                        ${inspectionStatusBadge(i.status)}
                       </td>
 
                       <td class="row-actions">
@@ -122,9 +148,9 @@ async function main() {
                         </a>
                       </td>
                     </tr>
-                  `
+                  `,
                 )
-                .join('') ||
+                .join("") ||
               `
                 <tr>
                   <td colspan="4" class="${empty}">
@@ -141,53 +167,51 @@ async function main() {
     // Inspection status summary
     const statusSummary = [
       {
-        key: 'open',
-        label: 'Open',
+        key: "open",
+        label: "Open",
       },
       {
-        key: 'submitted',
-        label: 'Menunggu Review',
+        key: "submitted",
+        label: "Menunggu Review",
       },
       {
-        key: 'approved',
-        label: 'Disetujui',
+        key: "approved",
+        label: "Disetujui",
       },
     ];
 
     const totalInspections = totals.inspections_month || 0;
 
-    document.getElementById('status-bars').innerHTML =
-      statusSummary
-        .map((item) => {
-          const value = totals[item.key] || 0;
+    document.getElementById("status-bars").innerHTML = statusSummary
+      .map((item) => {
+        const value = totals[item.key] || 0;
 
-          const percentage =
-            totalInspections > 0
-              ? Math.round(
-                  (value / totalInspections) * 100
-                )
-              : 0;
+        const percentage =
+          totalInspections > 0
+            ? Math.round((value / totalInspections) * 100)
+            : 0;
 
-          return `
-            <div class="bar-row">
-              <span>${item.label}</span>
+        return `
+          <div class="bar-row">
+            <span>${escapeHtml(item.label)}</span>
 
-              <div class="bar-track">
-                <div
-                  class="bar-fill"
-                  style="width:${percentage}%"
-                ></div>
-              </div>
-
-              <strong>
-                ${value} (${percentage}%)
-              </strong>
+            <div class="bar-track">
+              <div
+                class="bar-fill"
+                style="width:${percentage}%"
+              ></div>
             </div>
-          `;
-        })
-        .join('');
+
+            <strong>
+              ${value} (${percentage}%)
+            </strong>
+          </div>
+        `;
+      })
+      .join("");
   } catch (e) {
-    toast(e.message, 'error');
+    console.error("Dashboard error:", e);
+    toast(e.message || "Gagal memuat dashboard", "error");
   }
 }
 
