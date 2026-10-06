@@ -52,6 +52,12 @@ func scanJSON(raw []byte, dest *interface{}) {
 	*dest = v
 }
 
+type InspectionPDFChecklist struct {
+	Items   []model.ChecklistItem
+	Answers map[int]map[int64]string
+	// Answers[day][checklist_item_id] = status
+}
+
 // --- Token blacklist ---
 
 func (r *Repo) IsBlacklisted(jti string) (bool, error) {
@@ -225,4 +231,109 @@ func (r *Repo) ListRooms(status, condition, q string, scopeIDs []int64) ([]model
 
 func (r *Repo) GetRoom(id int64) (*model.Room, error) {
 	return r.scanRoom(r.DB.QueryRow(roomSelect+` WHERE r.id=$1`, id))
+}
+
+func (r *Repo) GetInspectionPDFChecklist(inspectionID int64, roomType string, year int, month time.Month) (*InspectionPDFChecklist, error) {
+	// Get checklist items for this room type.
+	itemRows, err := r.DB.Query(`
+		SELECT
+			id,
+			room_type,
+			name,
+			description,
+			is_required,
+			order_number,
+			created_at,
+			updated_at
+		FROM checklist_items
+		WHERE room_type = 'ALL'
+		   OR room_type = $1
+		ORDER BY order_number, id
+	`, roomType)
+	if err != nil {
+		return nil, err
+	}
+	defer itemRows.Close()
+
+	items := make([]model.ChecklistItem, 0)
+
+	for itemRows.Next() {
+		var item model.ChecklistItem
+		if err := itemRows.Scan(
+			&item.ID,
+			&item.RoomType,
+			&item.Name,
+			&item.Description,
+			&item.IsRequired,
+			&item.OrderNumber,
+			&item.CreatedAt,
+			&item.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		items = append(items, item)
+	}
+	if err := itemRows.Err(); err != nil {
+		return nil, err
+	}
+	// Get only actual inspection records.
+	rows, err := r.DB.Query(`
+		SELECT
+			answer_date,
+			checklist_item_id,
+			status
+		FROM inspection_checklist_items
+		WHERE inspection_id = $1
+		  AND answer_date >= $2
+		  AND answer_date < $3
+		ORDER BY answer_date, checklist_item_id
+	`,
+		inspectionID,
+		time.Date(year, month, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(year, month+1, 1, 0, 0, 0, 0, time.UTC),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	answers := make(map[int]map[int64]string)
+
+	for rows.Next() {
+		var (
+			answerDate      time.Time
+			checklistItemID int64
+			status          sql.NullString
+		)
+
+		if err := rows.Scan(
+			&answerDate,
+			&checklistItemID,
+			&status,
+		); err != nil {
+			return nil, err
+		}
+
+		day := answerDate.Day()
+
+		if answers[day] == nil {
+			answers[day] = make(map[int64]string)
+		}
+
+		if status.Valid {
+			answers[day][checklistItemID] = strings.ToUpper(
+				strings.TrimSpace(status.String),
+			)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &InspectionPDFChecklist{
+		Items:   items,
+		Answers: answers,
+	}, nil
 }

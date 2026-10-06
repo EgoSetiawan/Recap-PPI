@@ -66,11 +66,13 @@ func main() {
 	authed := api.Group("")
 	authed.Use(middleware.Auth(cfg.JWTSecret, repo, repo))
 	{
+		authed.POST("/auth/logout", h.Logout)
 		authed.GET("/me", h.Me)
 		authed.GET("/dashboard", h.Dashboard)
 		authed.GET("/inspections", h.ListInspections)
 		authed.GET("/inspections/:id", h.GetInspection)
 		authed.POST("/inspections", h.CreateInspection)
+		authed.GET("/inspections/:id/pdf", h.CreatePDFReport)
 	}
 
 	addr := ":" + cfg.Port

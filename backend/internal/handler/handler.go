@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -139,4 +140,33 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		return
 	}
 	response.OK(c, data, "Dashboard retrieved")
+}
+
+func (h *Handler) CreatePDFReport(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"ID pemeriksaan tidak valid",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	pdfBytes, filename, err := h.Svc.CreateMonthlyInspectionPDF(
+		middleware.CurrentUser(c), id,
+	)
+	if err != nil {
+		return
+	}
+	c.Header(
+		"Content-Disposition",
+		fmt.Sprintf(`attachment; filename="%s"`, filename),
+	)
+	c.Data(
+		http.StatusOK,
+		"application/pdf",
+		pdfBytes,
+	)
 }

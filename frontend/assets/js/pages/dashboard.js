@@ -1,15 +1,7 @@
 import { requireAuth, api } from "../api.js";
 import { mountShell, toast } from "../components/shell.js";
 import { escapeHtml, formatDate } from "../utils/format.js";
-import {
-  btn,
-  btnSecondary,
-  btnSm,
-  tableWrap,
-  empty,
-  statCard,
-  badge,
-} from "../ui.js";
+import { btn, btnSecondary, btnSm, tableWrap, empty, statCard, badge } from "../ui.js";
 
 function inspectionStatusBadge(status) {
   const map = {
@@ -104,8 +96,7 @@ async function main() {
       : "";
 
     // Recent inspections
-    document.getElementById("list-title").textContent =
-      "Pemeriksaan Terbaru";
+    document.getElementById("list-title").textContent = "Pemeriksaan Terbaru";
 
     const rows = data.recent_inspections || [];
 
@@ -186,10 +177,7 @@ async function main() {
       .map((item) => {
         const value = totals[item.key] || 0;
 
-        const percentage =
-          totalInspections > 0
-            ? Math.round((value / totalInspections) * 100)
-            : 0;
+        const percentage = totalInspections > 0 ? Math.round((value / totalInspections) * 100) : 0;
 
         return `
           <div class="bar-row">

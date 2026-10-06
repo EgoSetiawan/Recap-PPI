@@ -60,14 +60,15 @@ type SeedChecklistItem struct {
 }
 
 type SeedInspection struct {
-	ID              int64  `json:"id"`
-	RoomID          int64  `json:"room_id"`
-	InspectorID     int64  `json:"inspector_id"`
-	InspectionMonth string `json:"inspection_month"`
-	Notes           string `json:"notes"`
-	Status          string `json:"status"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
+	ID              int64                 `json:"id"`
+	RoomID          int64                 `json:"room_id"`
+	InspectorID     int64                 `json:"inspector_id"`
+	InspectionMonth string                `json:"inspection_month"`
+	Notes           string                `json:"notes"`
+	Status          string                `json:"status"`
+	CreatedAt       string                `json:"created_at"`
+	UpdatedAt       string                `json:"updated_at"`
+	Checklist       []SeedChecklistAnswer `json:"checklist"`
 }
 
 type SeedFile struct {
@@ -79,17 +80,28 @@ type SeedFile struct {
 	ChecklistItems []SeedChecklistItem `json:"checklist_items"`
 }
 
+type SeedChecklistAnswer struct {
+	ChecklistItemID int64  `json:"checklist_item_id"`
+	AnswerDate      string `json:"answer_date"`
+	Status          string `json:"status"`
+}
+
 func parseTime(s string) time.Time {
 	if s == "" {
 		return time.Now().UTC()
 	}
 
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		return time.Now().UTC()
+	// Full timestamp: 2026-09-01T08:00:00Z
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t
 	}
 
-	return t
+	// Date only: 2026-09-01
+	if t, err := time.Parse("2006-01-02", s); err == nil {
+		return t
+	}
+
+	return time.Now().UTC()
 }
 
 func validateSeed(sf *SeedFile) error {
@@ -341,6 +353,7 @@ func Run(db *sql.DB, path string) error {
 	// 7. Inspections
 	for _, inspection := range sf.Inspections {
 		month := parseTime(inspection.InspectionMonth)
+
 		month = time.Date(
 			month.Year(),
 			month.Month(),
@@ -382,6 +395,35 @@ func Run(db *sql.DB, path string) error {
 				err,
 			)
 		}
+
+		// Insert checklist items
+		for _, item := range inspection.Checklist {
+			answerDate := parseTime(item.AnswerDate)
+
+			_, err := tx.Exec(
+				`INSERT INTO inspection_checklist_items (
+				inspection_id,
+				checklist_item_id,
+				answer_date,
+				status,
+				notes
+			)
+			VALUES ($1, $2, $3, $4, $5)`,
+				inspection.ID,
+				item.ChecklistItemID,
+				answerDate,
+				item.Status,
+				"",
+			)
+			if err != nil {
+				return fmt.Errorf(
+					"inspection %d checklist %d: %w",
+					inspection.ID,
+					item.ChecklistItemID,
+					err,
+				)
+			}
+		}
 	}
 
 	seqs := []string{
@@ -390,6 +432,9 @@ func Run(db *sql.DB, path string) error {
 		"hospitals",
 		"rooms",
 		"checklist_items",
+		"inspections",
+		"inspection_checklist_items",
+		"inspection_signatures",
 	}
 
 	for _, table := range seqs {
