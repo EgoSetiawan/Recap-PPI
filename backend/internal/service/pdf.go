@@ -258,6 +258,7 @@ func addMonthlyChecklistMatrix(
 				Align: align.Center,
 			},
 		).WithStyle(style),
+
 		text.NewCol(
 			4,
 			"Keterangan Item Pemeriksaan",
@@ -316,10 +317,7 @@ func addMonthlyChecklistMatrix(
 			).WithStyle(style),
 		}
 
-		// =================================================
 		// DAY COLUMNS
-		// =================================================
-
 		for day := 1; day <= daysInMonth; day++ {
 
 			status := ""
