@@ -230,13 +230,7 @@ func monthlyCellStyle() *props.Cell {
 	}
 }
 
-func addMonthlyChecklistMatrix(
-	m core.Maroto,
-	year int,
-	month time.Month,
-	items []model.ChecklistItem,
-	answers map[int]map[int64]string,
-) {
+func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items []model.ChecklistItem, answers map[int]map[int64]string) {
 	daysInMonth := time.Date(
 		year,
 		month+1,
@@ -297,31 +291,32 @@ func addMonthlyChecklistMatrix(
 				1,
 				fmt.Sprintf("%d", i+1),
 				props.Text{
-					Size:  6,
-					Align: align.Center,
+					Size:   6,
+					Align:  align.Center,
+					Top:    1,
+					Left:   1,
+					Right:  1,
+					Bottom: 1,
 				},
 			).WithStyle(style),
 
 			// Keterangan
 			text.NewCol(
-				4,
-				fmt.Sprintf("%d. %s", i+1, item.Name),
+				4, item.Name,
 				props.Text{
 					Size:   5.5,
 					Align:  align.Left,
-					Top:    0.5,
+					Top:    1,
 					Left:   1,
 					Right:  1,
-					Bottom: 0.5,
+					Bottom: 1,
 				},
 			).WithStyle(style),
 		}
 
 		// DAY COLUMNS
 		for day := 1; day <= daysInMonth; day++ {
-
 			status := ""
-
 			if answers[day] != nil {
 				status = answers[day][item.ID]
 			}
@@ -353,6 +348,6 @@ func addMonthlyChecklistMatrix(
 			}
 		}
 
-		m.AddRow(5, row...)
+		m.AddRow(10, row...)
 	}
 }
