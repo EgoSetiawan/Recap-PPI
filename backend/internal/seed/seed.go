@@ -81,9 +81,9 @@ type SeedFile struct {
 }
 
 type SeedChecklistAnswer struct {
-	ChecklistItemID int64  `json:"checklist_item_id"`
-	AnswerDate      string `json:"answer_date"`
-	Status          string `json:"status"`
+	ChecklistItemID int64   `json:"checklist_item_id"`
+	AnswerDate      string  `json:"answer_date"`
+	Status          *string `json:"status"`
 }
 
 func parseTime(s string) time.Time {

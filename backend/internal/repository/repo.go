@@ -337,3 +337,35 @@ func (r *Repo) GetInspectionPDFChecklist(inspectionID int64, roomType string, ye
 		Answers: answers,
 	}, nil
 }
+
+// const scanKetua = `SELECT u.id, u.name, r.name AS role
+// FROM users u
+// JOIN roles r ON r.id = u.role_id
+// WHERE r.name = 'KEPALA';`
+
+// func (r *Repo) GetKetuaName() (string, error) {
+// 	var name string
+
+// 	err := r.DB.QueryRow(scanKetua).Scan(&name)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	fmt.Println("Ketua Name from Repo:", name)
+// 	return name, nil
+// }
+
+func (r *Repo) GetKetuaName() (string, error) {
+	var name string
+
+	err := r.DB.QueryRow(`
+		SELECT u.name
+		FROM users u
+		JOIN roles r ON r.id = u.role_id
+		WHERE r.name = 'KEPALA'
+		LIMIT 1
+	`).Scan(&name)
+
+	// fmt.Printf("DEBUG name=%q err=%v\n", name, err)
+
+	return name, err
+}

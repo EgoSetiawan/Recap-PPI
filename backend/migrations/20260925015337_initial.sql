@@ -40,7 +40,7 @@ CREATE TABLE rooms (
 );
 
 CREATE TABLE user_assigned_rooms (
-    user_id BIGINT NOT NULL
+    user_id cBIGINT NOT NULL
         REFERENCES users(id) ON DELETE CASCADE,
     room_id BIGINT NOT NULL
         REFERENCES rooms(id) ON DELETE CASCADE,

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/johnfercher/maroto/v2"
-	"github.com/johnfercher/maroto/v2/pkg/components/checkbox"
 	"github.com/johnfercher/maroto/v2/pkg/components/text"
 	"github.com/johnfercher/maroto/v2/pkg/config"
 	"github.com/johnfercher/maroto/v2/pkg/consts/align"
@@ -16,13 +15,39 @@ import (
 	"github.com/johnfercher/maroto/v2/pkg/consts/orientation"
 	"github.com/johnfercher/maroto/v2/pkg/consts/pagesize"
 	"github.com/johnfercher/maroto/v2/pkg/core"
+	"github.com/johnfercher/maroto/v2/pkg/core/entity"
+	"github.com/johnfercher/maroto/v2/pkg/fontrepository"
 	"github.com/johnfercher/maroto/v2/pkg/props"
 )
 
+func loadFonts() ([]entity.CustomFont, error) {
+	customFonts, err := fontrepository.New().
+		AddUTF8Font(
+			"MaterialSymbols",
+			fontstyle.Normal,
+			"fonts/MaterialSymbolsOutlined-Regular.ttf",
+		).
+		AddUTF8Font(
+			"MaterialSymbols",
+			fontstyle.Bold,
+			"fonts/MaterialSymbolsOutlined-Bold.ttf",
+		).
+		Load()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to load Noto Sans: %w", err)
+	}
+
+	return customFonts, nil
+}
+
 func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byte, string, error) {
 	ins, err := s.getInspectionForActor(actor, id)
+	ketuaName, err := s.Repo.GetKetuaName()
+	fmt.Println("Ketua:", ketuaName)
+
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("get ketua name: %w", err)
 	}
 
 	if ins == nil || ins.Room == nil {
@@ -40,6 +65,14 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		return nil, "", err
 	}
 
+	customFonts, err := loadFonts()
+	if err != nil {
+		fmt.Println("FONT ERROR:", err)
+		return nil, "", err
+	}
+
+	fmt.Println("FONT LOADED")
+
 	cfg := config.NewBuilder().
 		WithOrientation(orientation.Horizontal).
 		WithPageSize(pagesize.A4).
@@ -48,6 +81,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		WithRightMargin(6).
 		WithTopMargin(6).
 		WithBottomMargin(6).
+		WithCustomFonts(customFonts).
 		Build()
 
 	m := maroto.New(cfg)
@@ -55,7 +89,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 	m.AddRow(
 		8,
 		text.NewCol(
-			12,
+			36,
 			"LAPORAN KINERJA IPCLN PPI",
 			props.Text{
 				Size:  14,
@@ -68,17 +102,17 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 	m.AddRow(
 		7,
 		text.NewCol(
-			12,
+			36,
 			"RSU Dr. H. Koesnadi Bondowoso",
 			props.Text{
-				Size:  11,
+				Size:  13,
 				Style: fontstyle.Bold,
 				Align: align.Center,
 			},
 		),
 	)
 
-	m.AddRow(3, text.NewCol(12, "", props.Text{Size: 1}))
+	m.AddRow(3, text.NewCol(36, "", props.Text{Size: 1}))
 
 	m.AddRow(
 		5,
@@ -129,17 +163,17 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		),
 	)
 	// CHECKLIST LEGEND
-	m.AddRow(
-		5,
-		text.NewCol(
-			12,
-			"KETERANGAN ITEM PEMERIKSAAN",
-			props.Text{
-				Size:  8,
-				Style: fontstyle.Bold,
-			},
-		),
-	)
+	// m.AddRow(
+	// 	5,
+	// 	text.NewCol(
+	// 		12,
+	// 		"KETERANGAN ITEM PEMERIKSAAN",
+	// 		props.Text{
+	// 			Size:  8,
+	// 			Style: fontstyle.Bold,
+	// 		},
+	// 	),
+	// )
 
 	// for i, item := range pdfData.Items {
 	// 	m.AddAutoRow(
@@ -175,6 +209,12 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		pdfData.Items,
 		pdfData.Answers,
 	)
+	//Spacing for notes
+	m.AddRow(
+		8,
+		text.NewCol(18, "", props.Text{Size: 1}),
+		text.NewCol(18, "", props.Text{Size: 1}),
+	)
 	// NOTES
 	m.AddRow(
 		5,
@@ -208,6 +248,64 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 			},
 		).WithStyle(monthlyCellStyle()),
 	)
+
+	m.AddRow(
+		12,
+		text.NewCol(18, "", props.Text{Size: 1}),
+		text.NewCol(18, "", props.Text{Size: 1}),
+	)
+	// SIGNATURE
+	m.AddRow(
+		5,
+		text.NewCol(
+			18,
+			"Ketua PPI",
+			props.Text{
+				Size:  9,
+				Align: align.Center,
+			},
+		),
+		text.NewCol(
+			18,
+			"IPCLN",
+			props.Text{
+				Size:  9,
+				Align: align.Center,
+			},
+		),
+	)
+
+	// Signature space
+	m.AddRow(
+		20,
+		text.NewCol(18, "", props.Text{Size: 9}),
+		text.NewCol(18, "", props.Text{Size: 9}),
+	)
+
+	// Names
+	m.AddRow(
+		5,
+		text.NewCol(
+			18,
+			// "ketuaName",
+			ketuaName,
+			props.Text{
+				Size:  9,
+				Style: fontstyle.Bold,
+				Align: align.Center,
+			},
+		),
+		text.NewCol(
+			18,
+			actor.Name,
+			props.Text{
+				Size:  9,
+				Style: fontstyle.Bold,
+				Align: align.Center,
+			},
+		),
+	)
+
 	// GENERATE
 	doc, err := m.Generate()
 	if err != nil {
@@ -291,9 +389,9 @@ func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items 
 				1,
 				fmt.Sprintf("%d", i+1),
 				props.Text{
-					Size:   6,
+					Size:   7,
 					Align:  align.Center,
-					Top:    1,
+					Top:    1.5,
 					Left:   1,
 					Right:  1,
 					Bottom: 1,
@@ -304,7 +402,7 @@ func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items 
 			text.NewCol(
 				4, item.Name,
 				props.Text{
-					Size:   5.5,
+					Size:   7,
 					Align:  align.Left,
 					Top:    1,
 					Left:   1,
@@ -316,38 +414,52 @@ func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items 
 
 		// DAY COLUMNS
 		for day := 1; day <= daysInMonth; day++ {
-			status := ""
-			if answers[day] != nil {
-				status = answers[day][item.ID]
+			symbol := ""
+			if answers[day] != nil && answers[day][item.ID] == "GOOD" {
+				symbol = "\uE5CA"
 			}
 
-			if status == "GOOD" {
-				row = append(
-					row,
-					checkbox.NewCol(
-						1,
-						"",
-						props.Checkbox{
-							Checked: true,
-							Size:    3,
-							Top:     0.4,
-						},
-					).WithStyle(style),
-				)
-			} else {
-				row = append(
-					row,
-					text.NewCol(
-						1,
-						"",
-						props.Text{
-							Size: 5,
-						},
-					).WithStyle(style),
-				)
-			}
+			row = append(
+				row,
+				text.NewCol(
+					1,
+					symbol,
+					props.Text{
+						Family: "MaterialSymbols",
+						Top:    2,
+						Size:   12,
+						Align:  align.Center,
+					},
+				).WithStyle(style),
+			)
+
+			////// THIS IS USING CHECKBOX RECONSIDER FOR USING THIS
+			// if status == "GOOD" {
+			// 	row = append(
+			// 		row,
+			// 		checkbox.NewCol(
+			// 			1,
+			// 			"",
+			// 			props.Checkbox{
+			// 				Checked: true,
+			// 				Size:    3,
+			// 				Top:     0.4,
+			// 			},
+			// 		).WithStyle(style),
+			// 	)
+			// } else {
+			// 	row = append(
+			// 		row,
+			// 		text.NewCol(
+			// 			1,
+			// 			"",
+			// 			props.Text{
+			// 				Size: 5,
+			// 			},
+			// 		).WithStyle(style),
+			// 	)
+			// }
 		}
-
-		m.AddRow(10, row...)
+		m.AddRow(12, row...)
 	}
 }
