@@ -267,7 +267,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		),
 		text.NewCol(
 			18,
-			"IPCLN",
+			"Yang Mengetahui",
 			props.Text{
 				Size:  9,
 				Align: align.Center,
@@ -345,7 +345,8 @@ func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items 
 			1,
 			"No",
 			props.Text{
-				Size:  6,
+				Size:  7,
+				Top:   1,
 				Style: fontstyle.Bold,
 				Align: align.Center,
 			},
@@ -355,7 +356,8 @@ func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items 
 			4,
 			"Keterangan Item Pemeriksaan",
 			props.Text{
-				Size:  6,
+				Size:  7,
+				Top:   1,
 				Style: fontstyle.Bold,
 				Align: align.Center,
 			},
@@ -370,7 +372,8 @@ func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items 
 				1,
 				fmt.Sprintf("%d", day),
 				props.Text{
-					Size:  5,
+					Size:  7,
+					Top:   1,
 					Style: fontstyle.Bold,
 					Align: align.Center,
 				},
@@ -378,7 +381,7 @@ func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items 
 		)
 	}
 
-	m.AddRow(5, header...)
+	m.AddRow(7, header...)
 
 	// CHECKLIST ITEMS
 	for i, item := range items {
