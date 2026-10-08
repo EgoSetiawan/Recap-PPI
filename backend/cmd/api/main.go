@@ -71,6 +71,7 @@ func main() {
 		authed.GET("/dashboard", h.Dashboard)
 		authed.GET("/inspections", h.ListInspections)
 		authed.GET("/inspections/:id", h.GetInspection)
+		authed.DELETE("/inspections/:id", h.DeleteInspection)
 		authed.POST("/inspections", h.CreateInspection)
 		authed.GET("/inspections/:id/pdf", h.CreatePDFReport)
 	}

@@ -4,6 +4,7 @@ import (
 
 	// "mime/multipart"
 
+	"database/sql"
 	"net/http"
 	"strings"
 	"time"
@@ -290,4 +291,22 @@ func (s *Service) getInspectionForActor(actor *model.User, id int64) (*model.Ins
 		}
 	}
 	return ins, nil
+}
+
+func (s *Service) DeleteInspection(actor *model.User, id int64) error {
+	err := s.Repo.SoftDeleteInspection(id)
+
+	if err == sql.ErrNoRows {
+		return response.Err(
+			"NOT_FOUND",
+			"Inspection not found",
+			http.StatusNotFound,
+		)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

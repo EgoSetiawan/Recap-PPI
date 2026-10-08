@@ -355,6 +355,21 @@ func (r *Repo) ReplaceChecklistForDate(inspectionID int64, answerDate time.Time,
 	return tx.Commit()
 }
 
+func (r *Repo) SoftDeleteInspection(id int64) error {
+	result, err := r.DB.Exec(`UPDATE inspections SET is_deleted = TRUE WHERE id = $1 AND is_deleted = FALSE`, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func upsertSignatureTx(tx *sql.Tx, sig *model.Signature) error {
 	if sig.Method == "" {
 		sig.Method = "draw"

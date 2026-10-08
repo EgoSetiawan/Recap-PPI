@@ -338,22 +338,6 @@ func (r *Repo) GetInspectionPDFChecklist(inspectionID int64, roomType string, ye
 	}, nil
 }
 
-// const scanKetua = `SELECT u.id, u.name, r.name AS role
-// FROM users u
-// JOIN roles r ON r.id = u.role_id
-// WHERE r.name = 'KEPALA';`
-
-// func (r *Repo) GetKetuaName() (string, error) {
-// 	var name string
-
-// 	err := r.DB.QueryRow(scanKetua).Scan(&name)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	fmt.Println("Ketua Name from Repo:", name)
-// 	return name, nil
-// }
-
 func (r *Repo) GetKetuaName() (string, error) {
 	var name string
 
@@ -364,8 +348,6 @@ func (r *Repo) GetKetuaName() (string, error) {
 		WHERE r.name = 'KEPALA'
 		LIMIT 1
 	`).Scan(&name)
-
-	// fmt.Printf("DEBUG name=%q err=%v\n", name, err)
 
 	return name, err
 }

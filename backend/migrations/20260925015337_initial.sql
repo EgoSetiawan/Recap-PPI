@@ -67,6 +67,7 @@ CREATE TABLE inspections (
     inspection_month DATE NOT NULL,
     notes            TEXT NOT NULL DEFAULT '',
     status           VARCHAR(30) NOT NULL DEFAULT 'OPEN',
+    is_deleted       BOOLEAN NOT NULL DEFAULT FALSE
     created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 

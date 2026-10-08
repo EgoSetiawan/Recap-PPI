@@ -211,7 +211,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 	)
 	//Spacing for notes
 	m.AddRow(
-		8,
+		6,
 		text.NewCol(18, "", props.Text{Size: 1}),
 		text.NewCol(18, "", props.Text{Size: 1}),
 	)

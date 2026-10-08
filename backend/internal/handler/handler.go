@@ -170,3 +170,16 @@ func (h *Handler) CreatePDFReport(c *gin.Context) {
 		pdfBytes,
 	)
 }
+
+func (h *Handler) DeleteInspection(c *gin.Context) {
+	id, err := parseID(c, "id")
+	if err != nil {
+		response.FailCode(c, "VALIDATION_ERROR", "Invalid id", http.StatusUnprocessableEntity)
+		return
+	}
+	if err := h.Svc.DeleteInspection(middleware.CurrentUser(c), id); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, nil, "Inspections deleted")
+}
