@@ -140,6 +140,13 @@ func (r *Repo) GetByEmail(email string) (*model.User, error) {
 	return r.scanUser(r.DB.QueryRow(userSelect+` WHERE LOWER(u.email)=LOWER($1)`, email))
 }
 
+func (r *Repo) GetByUsernameOrEmail(identifier string) (*model.User, error) {
+	return r.scanUser(r.DB.QueryRow(
+		userSelect+` WHERE LOWER(u.email)=LOWER($1) OR LOWER(u.name)=LOWER($1)`,
+		identifier,
+	))
+}
+
 // --- Rooms ---
 
 const roomSelect = `
@@ -350,4 +357,58 @@ func (r *Repo) GetKetuaName() (string, error) {
 	`).Scan(&name)
 
 	return name, err
+}
+
+func (r *Repo) ListChecklist(roomType string) ([]model.ChecklistItem, error) {
+	q := `SELECT id, room_type, name, description, is_required, order_number, created_at, updated_at FROM checklist_items`
+	args := []interface{}{}
+	if roomType != "" {
+		q += ` WHERE room_type='ALL' OR room_type=$1`
+		args = append(args, roomType)
+	}
+	q += ` ORDER BY order_number, id`
+	rows, err := r.DB.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []model.ChecklistItem{}
+	for rows.Next() {
+		var c model.ChecklistItem
+		if err := rows.Scan(&c.ID, &c.RoomType, &c.Name, &c.Description, &c.IsRequired, &c.OrderNumber, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repo) LogActions(userID *int64, action, entityType string, entityID *int64, oldValue, newValue interface{}) error {
+	var oldB, newB []byte
+	var err error
+	if oldValue != nil {
+		oldB, err = json.Marshal(oldValue)
+		if err != nil {
+			return err
+		}
+	}
+	if newValue != nil {
+		newB, err = json.Marshal(newValue)
+		if err != nil {
+			return err
+		}
+	}
+	_, err = r.DB.Exec(
+		`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, old_value, new_value, ip_address)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+		nullInt64(userID), action, entityType, nullInt64(entityID), nullJSON(oldB), nullJSON(newB),
+	)
+	return err
+}
+
+func nullJSON(b []byte) interface{} {
+	if len(b) == 0 {
+		return nil
+	}
+	return b
 }

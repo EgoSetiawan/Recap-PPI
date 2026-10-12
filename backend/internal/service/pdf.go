@@ -269,7 +269,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 			18,
 			"Yang Mengetahui",
 			props.Text{
-				Size:  9,
+				Size:  10,
 				Align: align.Center,
 			},
 		),
@@ -281,13 +281,11 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		text.NewCol(18, "", props.Text{Size: 9}),
 		text.NewCol(18, "", props.Text{Size: 9}),
 	)
-
 	// Names
 	m.AddRow(
 		5,
 		text.NewCol(
 			18,
-			// "ketuaName",
 			ketuaName,
 			props.Text{
 				Size:  9,
@@ -316,7 +314,6 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		ins.ID,
 		ins.InspectionMonth.Format("2006-01"),
 	)
-
 	return doc.GetBytes(), filename, nil
 }
 
@@ -414,14 +411,12 @@ func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items 
 				},
 			).WithStyle(style),
 		}
-
 		// DAY COLUMNS
 		for day := 1; day <= daysInMonth; day++ {
 			symbol := ""
 			if answers[day] != nil && answers[day][item.ID] == "GOOD" {
 				symbol = "\uE5CA"
 			}
-
 			row = append(
 				row,
 				text.NewCol(

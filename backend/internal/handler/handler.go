@@ -35,7 +35,7 @@ func (h *Handler) Login(c *gin.Context) {
 		response.FailCode(c, "INVALID_JSON", "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	data, err := h.Svc.Login(in, c.ClientIP())
+	data, err := h.Svc.Login(in)
 	if err != nil {
 		response.Fail(c, err)
 		return

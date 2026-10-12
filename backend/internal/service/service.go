@@ -63,6 +63,7 @@ func uid(u *model.User) *int64 {
 // --- Auth ---
 
 type LoginInput struct {
+	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -93,14 +94,17 @@ func assertRoomAccess(u *model.User, roomID int64) error {
 	return response.Err("FORBIDDEN", "Akses ruangan di luar scope", http.StatusForbidden)
 }
 
-func (s *Service) Login(in LoginInput, ip string) (map[string]interface{}, error) {
-	email := strings.ToLower(strings.TrimSpace(in.Email))
-	user, err := s.Repo.GetByEmail(email)
+func (s *Service) Login(in LoginInput) (map[string]interface{}, error) {
+	identifier := strings.ToLower(strings.TrimSpace(in.Username))
+	if identifier == "" {
+		identifier = strings.ToLower(strings.TrimSpace(in.Email))
+	}
+	user, err := s.Repo.GetByUsernameOrEmail(identifier)
 	if err != nil {
 		return nil, err
 	}
 	if user == nil || user.Status != "ACTIVE" || !auth.CheckPassword(user.PasswordHash, in.Password) {
-		return nil, response.Err("INVALID_CREDENTIALS", "Email atau password salah", http.StatusUnauthorized)
+		return nil, response.Err("INVALID_CREDENTIALS", "Email/Username atau password salah", http.StatusUnauthorized)
 	}
 	jti := uuid.NewString()
 	token, _, err := auth.IssueToken(s.JWTSecret, s.JWTTTL, user.ID, user.Role, jti)
@@ -257,4 +261,8 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 		"recent_inspections": recent,
 		"room_monitor":       roomRows,
 	}, nil
+}
+
+func (s *Service) ListChecklist(roomType string) ([]model.ChecklistItem, error) {
+	return s.Repo.ListChecklist(roomType)
 }
