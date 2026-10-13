@@ -21,6 +21,7 @@ type SeedUser struct {
 	Name            string  `json:"name"`
 	Email           string  `json:"email"`
 	Title           string  `json:"title"`
+	Nip             string  `json:"nip"`
 	Password        string  `json:"password"`
 	RoleID          int64   `json:"role_id"`
 	Status          string  `json:"status"`
@@ -257,13 +258,14 @@ func Run(db *sql.DB, path string) error {
 
 		if _, err := tx.Exec(
 			`INSERT INTO users
-				(id, name, email, title, password_hash, role_id, status, created_at, updated_at)
+				(id, name, email, title, nip, password_hash, role_id, status, created_at, updated_at)
 			 VALUES
-				($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+				($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 			user.ID,
 			user.Name,
 			user.Email,
 			user.Title,
+			user.Nip,
 			hash,
 			user.RoleID,
 			status,

@@ -1,10 +1,12 @@
 package service
 
 import (
-	"PPI/internal/model"
 	"fmt"
+	"log"
 	"strings"
 	"time"
+
+	"PPI/internal/model"
 
 	"github.com/johnfercher/maroto/v2"
 	"github.com/johnfercher/maroto/v2/pkg/components/text"
@@ -43,9 +45,9 @@ func loadFonts() ([]entity.CustomFont, error) {
 
 func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byte, string, error) {
 	ins, err := s.getInspectionForActor(actor, id)
-	ketuaName, err := s.Repo.GetKetuaName()
-	fmt.Println("Ketua:", ketuaName)
-
+	ketuaName, KetuaNip, err := s.Repo.GetKetua()
+	// fmt.Println("Actor:", actor.Name, Actor.Nip)
+	log.Printf("Actor name: %q, Actor NIP: %q", actor.Name, actor.Nip)
 	if err != nil {
 		return nil, "", fmt.Errorf("get ketua name: %w", err)
 	}
@@ -277,7 +279,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 
 	// Signature space
 	m.AddRow(
-		20,
+		15,
 		text.NewCol(18, "", props.Text{Size: 9}),
 		text.NewCol(18, "", props.Text{Size: 9}),
 	)
@@ -299,6 +301,26 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 			props.Text{
 				Size:  9,
 				Style: fontstyle.Bold,
+				Align: align.Center,
+			},
+		),
+	)
+
+	m.AddRow(
+		5,
+		text.NewCol(
+			18,
+			"NIP. "+KetuaNip,
+			props.Text{
+				Size:  8,
+				Align: align.Center,
+			},
+		),
+		text.NewCol(
+			18,
+			"NIP. "+actor.Nip,
+			props.Text{
+				Size:  8,
 				Align: align.Center,
 			},
 		),

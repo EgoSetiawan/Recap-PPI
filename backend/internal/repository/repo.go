@@ -114,7 +114,7 @@ func (r *Repo) setAssignedRooms(tx *sql.Tx, userID int64, roomIDs []int64) error
 
 func (r *Repo) scanUser(row interface{ Scan(dest ...any) error }) (*model.User, error) {
 	var u model.User
-	err := row.Scan(&u.ID, &u.Name, &u.Email, &u.Title, &u.PasswordHash, &u.RoleID, &u.Role, &u.Status, &u.CreatedAt, &u.UpdatedAt)
+	err := row.Scan(&u.ID, &u.Name, &u.Email, &u.Title, &u.Nip, &u.PasswordHash, &u.RoleID, &u.Role, &u.Status, &u.CreatedAt, &u.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -129,7 +129,7 @@ func (r *Repo) scanUser(row interface{ Scan(dest ...any) error }) (*model.User, 
 	return &u, nil
 }
 
-const userSelect = `SELECT u.id, u.name, u.email, COALESCE(u.title,''), u.password_hash, u.role_id, r.name, u.status, u.created_at, u.updated_at
+const userSelect = `SELECT u.id, u.name, u.email, COALESCE(u.title,''), u.nip,u.password_hash, u.role_id, r.name, u.status, u.created_at, u.updated_at
 FROM users u JOIN roles r ON r.id = u.role_id`
 
 func (r *Repo) GetByID(id int64) (*model.User, error) {
@@ -357,6 +357,20 @@ func (r *Repo) GetKetuaName() (string, error) {
 	`).Scan(&name)
 
 	return name, err
+}
+
+func (r *Repo) GetKetua() (string, string, error) {
+	var name, nip string
+
+	err := r.DB.QueryRow(`
+		SELECT u.name, u.nip
+		FROM users u
+		JOIN roles r ON r.id = u.role_id
+		WHERE r.name = 'KEPALA'
+		LIMIT 1
+	`).Scan(&name, &nip)
+
+	return name, nip, err
 }
 
 func (r *Repo) ListChecklist(roomType string) ([]model.ChecklistItem, error) {
