@@ -519,27 +519,6 @@ export async function mountShell(activePage, options = {}) {
           >
             RSU Dr. H. Koesnadi
           </div>
-
-          <form
-            class="topbar-search"
-            id="global-search-form"
-          >
-            <label
-              class="sr-only"
-              for="global-search-input"
-            >
-              Cari ruangan
-            </label>
-
-            <input
-              id="global-search-input"
-              type="search"
-              name="q"
-              placeholder="Cari kode atau nama ruangan…"
-              autocomplete="off"
-            />
-          </form>
-
         </div>
 
         <div class="topbar-actions">

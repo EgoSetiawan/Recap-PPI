@@ -150,6 +150,7 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// Get inspections available to this user.
 	inspections, err := s.Repo.ListInspections(
 		repository.InspectionFilter{
@@ -159,7 +160,8 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Current month.
+
+	// Determine the current month.
 	now := time.Now().UTC()
 	currentMonth := time.Date(
 		now.Year(),
@@ -168,18 +170,16 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 		0, 0, 0, 0,
 		time.UTC,
 	)
-	// Monthly inspection statistics.
+
+	// Statistics.
 	monthlyInspections := 0
 	open := 0
 	submitted := 0
 	approved := 0
 	rejected := 0
+
 	for _, ins := range inspections {
-		if ins.InspectionMonth.Year() != currentMonth.Year() ||
-			ins.InspectionMonth.Month() != currentMonth.Month() {
-			continue
-		}
-		monthlyInspections++
+		// Count statuses across all months.
 		switch ins.Status {
 		case StatusOpen:
 			open++
@@ -190,10 +190,15 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 		case StatusRejected:
 			rejected++
 		}
+
+		// Count inspections belonging to the current month only.
+		if ins.InspectionMonth.Year() == currentMonth.Year() &&
+			ins.InspectionMonth.Month() == currentMonth.Month() {
+			monthlyInspections++
+		}
 	}
 	// Map room ID -> room.
 	roomByID := make(map[int64]model.Room, len(rooms))
-
 	for _, room := range rooms {
 		roomByID[room.ID] = room
 	}

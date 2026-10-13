@@ -11,6 +11,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="assets/css/app.css" />
+    <!-- <link rel="stylesheet" href="assets/css/daisyui.css" /> -->
     <script src="assets/js/config.js"></script>
   </head>
   <body>
@@ -25,8 +26,15 @@
           </div>
           <form id="login-form">
             <div class="form-group mb-3 flex min-w-0 flex-col gap-1">
-              <label for="email">Email *</label>
-              <input id="email" name="email" type="email" required autocomplete="username" />
+              <label for="username">Email or Username</label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                required
+                autocomplete="username"
+                placeholder="Enter your email or username"
+              />
             </div>
             <div class="form-group mb-3 flex min-w-0 flex-col gap-1">
               <label for="password">Password *</label>
@@ -59,23 +67,26 @@
 
       document.querySelectorAll("[data-email]").forEach((btn) => {
         btn.addEventListener("click", () => {
-          document.getElementById("email").value = btn.getAttribute("data-email");
+          document.getElementById("username").value = btn.getAttribute("data-email");
           document.getElementById("password").value = "0";
         });
       });
 
       document.getElementById("login-form").addEventListener("submit", async (e) => {
-        console.log("SUBMIT HANDLER FIRED");
         e.preventDefault();
+
         const fd = new FormData(e.target);
         const err = document.getElementById("login-error");
+
         err.classList.add("hidden");
+
         try {
-          await login(String(fd.get("email")), String(fd.get("password")));
+          await login(String(fd.get("username")), String(fd.get("password")));
+
           toast("Login berhasil", "success");
           location.href = "pages/dashboard.html";
         } catch (ex) {
-          err.textContent = ex.message || "Login gagal. Periksa email dan password.";
+          err.textContent = ex.message || "Login gagal. Periksa email/username dan password.";
           err.classList.remove("hidden");
         }
       });

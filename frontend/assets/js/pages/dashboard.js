@@ -97,9 +97,7 @@ async function main() {
 
     // Recent inspections
     document.getElementById("list-title").textContent = "Pemeriksaan Terbaru";
-
     const rows = data.recent_inspections || [];
-
     document.getElementById("critical-list").innerHTML = `
       <div class="${tableWrap}">
         <table class="data" style="border:none">
@@ -160,18 +158,25 @@ async function main() {
       {
         key: "open",
         label: "Open",
+        color: "warn",
       },
       {
         key: "submitted",
         label: "Menunggu Review",
+        color: "",
       },
       {
         key: "approved",
         label: "Disetujui",
+        color: "good",
       },
     ];
 
-    const totalInspections = totals.inspections_month || 0;
+    const totalInspections =
+    (totals.open || 0) +
+    (totals.submitted || 0) +
+    (totals.approved || 0) +
+    (totals.rejected || 0);
 
     document.getElementById("status-bars").innerHTML = statusSummary
       .map((item) => {
