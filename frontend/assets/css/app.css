@@ -2824,6 +2824,9 @@
   .toast-container {
     left: auto;
   }
+  .sidebar-close {
+    display: none;
+  }
 }
 @media (max-width: 1023px) {
   .insp-actions-sticky {
@@ -2837,6 +2840,7 @@
     position: sticky;
     bottom: 0;
   }
+
   @supports (color: color-mix(in lab, red, red)) {
     .insp-actions-sticky {
       background-color: color-mix(in oklab, var(--color-surface) 95%, transparent);

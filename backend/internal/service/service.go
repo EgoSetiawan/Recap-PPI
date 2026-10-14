@@ -271,3 +271,7 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 func (s *Service) ListChecklist(roomType string) ([]model.ChecklistItem, error) {
 	return s.Repo.ListChecklist(roomType)
 }
+
+func (s *Service) ListRoomsWithActors(actor *model.User, q string) ([]model.Room, error) {
+	return s.Repo.ListRoomsWithActors(q, scopeRoomIDs(actor))
+}

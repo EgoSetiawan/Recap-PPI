@@ -160,6 +160,67 @@ SELECT
     r.updated_at
 FROM rooms r`
 
+const RoomWithActors = `
+    SELECT
+        r.id,
+        r.name,
+        r.code,
+        r.room_type,
+        r.description,
+        r.created_at,
+        r.updated_at,
+        u.id,
+        u.name,
+        u.nip,
+        u.title
+    FROM rooms r
+    LEFT JOIN user_assigned_rooms uar
+        ON uar.room_id = r.id
+    LEFT JOIN users u
+        ON u.id = uar.user_id
+	`
+
+func (r *Repo) scanRoomWithActors(rows interface{ Scan(dest ...any) error }) (*model.Room, *model.User, error) {
+	var room model.Room
+	var user model.User
+
+	var actorID sql.NullInt64
+	var actorName, actorNIP, actorTitle sql.NullString
+
+	err := rows.Scan(
+		&room.ID,
+		&room.Name,
+		&room.Code,
+		&room.RoomType,
+		&room.Description,
+		&room.CreatedAt,
+		&room.UpdatedAt,
+		&actorID,
+		&actorName,
+		&actorNIP,
+		&actorTitle,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil, nil
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if !actorID.Valid {
+		return &room, nil, nil
+	}
+
+	user.ID = actorID.Int64
+	user.Name = actorName.String
+	user.Nip = actorNIP.String
+	user.Title = actorTitle.String
+
+	return &room, &user, nil
+}
+
 func (r *Repo) scanRoom(rows interface{ Scan(dest ...any) error }) (*model.Room, error) {
 	var room model.Room
 
@@ -236,8 +297,91 @@ func (r *Repo) ListRooms(status, condition, q string, scopeIDs []int64) ([]model
 	return out, rows.Err()
 }
 
+func (r *Repo) ListRoomsWithActors(q string, scopeIDs []int64) ([]model.Room, error) {
+	var conds []string
+	var args []interface{}
+	n := 1
+	if q != "" {
+		conds = append(
+			conds,
+			fmt.Sprintf(
+				"(LOWER(r.name) LIKE $%d OR LOWER(r.code) LIKE $%d)",
+				n, n,
+			),
+		)
+		args = append(args, "%"+strings.ToLower(q)+"%")
+		n++
+	}
+	if scopeIDs != nil {
+		if len(scopeIDs) == 0 {
+			return []model.Room{}, nil
+		}
+
+		placeholders := make([]string, len(scopeIDs))
+		for i, id := range scopeIDs {
+			placeholders[i] = fmt.Sprintf("$%d", n)
+			args = append(args, id)
+			n++
+		}
+
+		conds = append(
+			conds,
+			"r.id IN ("+strings.Join(placeholders, ",")+")",
+		)
+	}
+	query := RoomWithActors
+	if len(conds) > 0 {
+		query += " WHERE " + strings.Join(conds, " AND ")
+	}
+	query += " ORDER BY r.id, u.name"
+	rows, err := r.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]model.Room, 0)
+	roomIndexes := make(map[int64]int)
+	for rows.Next() {
+		room, actor, err := r.scanRoomWithActors(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		if room == nil {
+			continue
+		}
+
+		index, exists := roomIndexes[room.ID]
+
+		if !exists {
+			room.AssignedActors = make([]model.User, 0)
+			out = append(out, *room)
+
+			index = len(out) - 1
+			roomIndexes[room.ID] = index
+		}
+
+		if actor != nil {
+			out[index].AssignedActors = append(
+				out[index].AssignedActors,
+				*actor,
+			)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
 func (r *Repo) GetRoom(id int64) (*model.Room, error) {
 	return r.scanRoom(r.DB.QueryRow(roomSelect+` WHERE r.id=$1`, id))
+}
+
+func (r *Repo) GetRoomWithActors(id int64) (*model.Room, error) {
+	return r.scanRoom(r.DB.QueryRow(RoomWithActors+` WHERE r.id=$1`, id))
 }
 
 func (r *Repo) GetInspectionPDFChecklist(inspectionID int64, roomType string, year int, month time.Month) (*InspectionPDFChecklist, error) {

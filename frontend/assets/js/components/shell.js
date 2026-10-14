@@ -79,16 +79,6 @@ const NAV_SECTIONS = [
         label: "Pengguna",
         roles: ["SUPER_ADMIN"],
       },
-      {
-        href: "audit.html",
-        label: "Audit Log",
-        roles: ["SUPER_ADMIN"],
-      },
-      {
-        href: "settings.html",
-        label: "Pengaturan",
-        roles: ["SUPER_ADMIN"],
-      },
     ],
   },
 ];

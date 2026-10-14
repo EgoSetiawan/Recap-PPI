@@ -271,7 +271,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 			18,
 			"Yang Mengetahui",
 			props.Text{
-				Size:  10,
+				Size:  9,
 				Align: align.Center,
 			},
 		),

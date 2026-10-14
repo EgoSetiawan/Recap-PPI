@@ -24,13 +24,14 @@ type User struct {
 }
 
 type Room struct {
-	ID          int64     `json:"id"`
-	Name        string    `json:"name"`
-	Code        string    `json:"code"`
-	RoomType    string    `json:"room_type"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID             int64     `json:"id"`
+	Name           string    `json:"name"`
+	Code           string    `json:"code"`
+	RoomType       string    `json:"room_type"`
+	Description    string    `json:"description"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	AssignedActors []User    `json:"assigned_actors"`
 }
 
 type ChecklistItem struct {

@@ -16,6 +16,22 @@
     {
       "source": "/pages/dashboard",
       "destination": "/pages/dashboard.html"
+    },
+    {
+      "source": "/pages/pengguna",
+      "destination": "/pages/pengguna.html"
+    },
+    {
+      "source": "/pages/inspection",
+      "destination": "/pages/inspection.html"
+    },
+    {
+      "source": "/pages/inspection-detail",
+      "destination": "/pages/inspection-detail.html"
+    },
+        {
+      "source": "/pages/latest",
+      "destination": "/pages/latest.html"
     }
   ]
 }

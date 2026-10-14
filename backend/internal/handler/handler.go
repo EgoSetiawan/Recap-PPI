@@ -183,3 +183,21 @@ func (h *Handler) DeleteInspection(c *gin.Context) {
 	}
 	response.OK(c, nil, "Inspections deleted")
 }
+
+func (h *Handler) ListChecklist(c *gin.Context) {
+	list, err := h.Svc.ListChecklist(c.Query("room_type"))
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, list, "Checklist items retrieved")
+}
+
+func (h *Handler) ListRooms(c *gin.Context) {
+	list, err := h.Svc.ListRoomsWithActors(middleware.CurrentUser(c), c.Query("q"))
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, list, "Rooms retrieved")
+}

@@ -73,8 +73,9 @@ func main() {
 		authed.GET("/inspections/:id", h.GetInspection)
 		authed.DELETE("/inspections/:id", h.DeleteInspection)
 		authed.POST("/inspections", h.CreateInspection)
-		
+		authed.GET("/checklist-items", h.ListChecklist)
 		authed.GET("/inspections/:id/pdf", h.CreatePDFReport)
+		authed.GET("/rooms", h.ListRooms)
 	}
 
 	addr := ":" + cfg.Port

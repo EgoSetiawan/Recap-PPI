@@ -1,21 +1,7 @@
 import { requireAuth, api, hasPermission, downloadInspectionPdf } from '../api.js';
 import { mountShell, toast } from '../components/shell.js';
-import {
-  qs, escapeHtml, formatDate, statusBadge,
-} from '../utils/format.js';
-import {
-  btn, btnSecondary, empty, section, sectionHeader, sectionBody, alert as alertClass,
-} from '../ui.js';
-import { SignaturePad } from '../signature.js';
-
-import { requireAuth, api, hasPermission, downloadInspectionPdf } from '../api.js';
-import { mountShell, toast } from '../components/shell.js';
-import {
-  qs, escapeHtml, formatDate, statusBadge,
-} from '../utils/format.js';
-import {
-  btn, btnSecondary, empty, section, sectionHeader, sectionBody, alert as alertClass,
-} from '../ui.js';
+import {qs, escapeHtml, formatDate, statusBadge,} from '../utils/format.js';
+import {btn, btnSecondary, empty, section, sectionHeader, sectionBody, alert as alertClass,} from '../ui.js';
 import { SignaturePad } from '../signature.js';
 
 
@@ -117,6 +103,17 @@ const canSignAsKepalaRuangan =
   const findings = items.filter((i) => (i.notes || '').trim());
   const photos = insp.photos || [];
   const logs = insp.workflow_logs || [];
+const monthNames = [
+  'Januari', 'Februari', 'Maret', 'April',
+  'Mei', 'Juni', 'Juli', 'Agustus',
+  'September', 'Oktober', 'November', 'Desember'
+];
+
+const monthNumber = insp.inspection_month?.match(/^\d{4}-(\d{2})-/)?.[1];
+
+const monthName = monthNumber
+  ? monthNames[Number(monthNumber) - 1] || '—'
+  : '—';
 
   document.getElementById('detail-root').innerHTML = `
     ${failed ? `<div class="${alertClass('failed')}">Temuan kritis PPI (Tidak Sesuai) — perlu perhatian segera.</div>` : ''}
@@ -127,10 +124,7 @@ const canSignAsKepalaRuangan =
           <div><span>Nomor</span><strong>${insp.document_number || insp.id}</strong></div>
           <div><span>Ruangan</span><strong>${escapeHtml(room.name || '')}</strong></div>
           <div><span>Kode</span><strong>${escapeHtml(room.code || '')}</strong></div>
-          <div><span>Gedung</span><strong>${escapeHtml(room.building_name || '')}</strong></div>
-          <div><span>Lantai</span><strong>${room.floor ?? '—'}</strong></div>
-          <div><span>Tanggal</span><strong>${formatDate(insp.inspection_date)}</strong></div>
-          <div><span>Pemeriksa</span><strong>${escapeHtml(insp.inspector_name || '')}</strong></div>
+          <div><span>Bulan</span><strong>${formatDate(monthName)}</strong></div>
           <div><span>Hasil</span><strong>${statusBadge(insp.result)}</strong></div>
           <div><span>Status</span><strong>${statusBadge(insp.status)}</strong></div>
         </div>
@@ -150,20 +144,8 @@ const canSignAsKepalaRuangan =
       </div>
     </div>
     <div class="${section}" style="margin-top:12px">
-      <div class="${sectionHeader}">Temuan</div>
-      <div class="${sectionBody}">${findings.length ? `<ul>${findings.map((f) => `<li><strong>${escapeHtml(f.name || '')}:</strong> ${escapeHtml(f.notes)}</li>`).join('')}</ul>` : '<p class="page-meta">Tidak ada temuan.</p>'}</div>
-    </div>
-    <div class="${section}" style="margin-top:12px">
       <div class="${sectionHeader}">Catatan</div>
       <div class="${sectionBody}">${escapeHtml(insp.notes || '—')}</div>
-    </div>
-    <div class="${section}" style="margin-top:12px">
-      <div class="${sectionHeader}">Lampiran</div>
-      <div class="${sectionBody}">
-        <div class="photo-previews">
-          ${photos.map((p) => `<a href="${photoUrl(p.url)}" target="_blank" rel="noopener"><img src="${photoUrl(p.url)}" alt="Foto pemeriksaan" /></a>`).join('') || '<p class="page-meta">Tidak ada foto.</p>'}
-        </div>
-      </div>
     </div>
     <div class="${section}" style="margin-top:12px">
       <div class="${sectionHeader}">Tanda Tangan</div>
@@ -192,18 +174,6 @@ const canSignAsKepalaRuangan =
               `
               : ''
           }
-      </div>
-    </div>
-    <div class="${section}" style="margin-top:12px">
-      <div class="${sectionHeader}">Riwayat Pemeriksaan</div>
-      <div class="${sectionBody}">
-        <ol class="timeline">
-          ${logs.map((l) => `<li>
-            <strong>${escapeHtml(l.action)}</strong>
-            <div class="page-meta">${formatDate(l.created_at)} · ${escapeHtml(l.user_name || '')} · ${escapeHtml(l.previous_status || '—')} → ${escapeHtml(l.new_status || '')}</div>
-            ${l.reason ? `<div>${escapeHtml(l.reason)}</div>` : ''}
-          </li>`).join('') || '<li class="page-meta">Belum ada riwayat alur.</li>'}
-        </ol>
       </div>
     </div>
   `;
