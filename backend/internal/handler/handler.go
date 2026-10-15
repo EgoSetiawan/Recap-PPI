@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"PPI/internal/middleware"
+	"PPI/internal/model"
 	"PPI/internal/response"
 	"PPI/internal/service"
 
@@ -200,4 +201,18 @@ func (h *Handler) ListRooms(c *gin.Context) {
 		return
 	}
 	response.OK(c, list, "Rooms retrieved")
+}
+
+func (h *Handler) CreateChecklist(c *gin.Context) {
+	var in model.ChecklistItem
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.FailCode(c, "INVALID_JSON", "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	created, err := h.Svc.CreateChecklist(middleware.CurrentUser(c), &in)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Created(c, created, "Checklist item created")
 }

@@ -570,3 +570,11 @@ func nullJSON(b []byte) interface{} {
 	}
 	return b
 }
+
+func (r *Repo) CreateChecklistItem(c *model.ChecklistItem) error {
+	return r.DB.QueryRow(
+		`INSERT INTO checklist_items (room_type, name, description, is_required, order_number)
+		 VALUES ($1,$2,$3,$4,$5) RETURNING id, created_at, updated_at`,
+		c.RoomType, c.Name, c.Description, c.IsRequired, c.OrderNumber,
+	).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt)
+}

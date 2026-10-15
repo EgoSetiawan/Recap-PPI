@@ -34,6 +34,10 @@
       "destination": "/pages/latest.html"
     },
     {
+      "source": "/pages/checklist",
+      "destination": "/pages/checklist.html"
+    },
+    {
       "source": "/pages/rooms",
       "destination": "/pages/rooms.html"
     }

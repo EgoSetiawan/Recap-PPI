@@ -275,3 +275,32 @@ func (s *Service) ListChecklist(roomType string) ([]model.ChecklistItem, error) 
 func (s *Service) ListRoomsWithActors(actor *model.User, q string) ([]model.Room, error) {
 	return s.Repo.ListRoomsWithActors(q, scopeRoomIDs(actor))
 }
+
+func (s *Service) CreateChecklist(actor *model.User, c *model.ChecklistItem) (*model.ChecklistItem, error) {
+	if actor == nil {
+		return nil, response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
+
+	if actor.Role != "Administrator" {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya Anggota yang dapat membuat pemeriksaan",
+			http.StatusForbidden,
+		)
+	}
+
+	if c.RoomType == "" {
+		c.RoomType = "ALL"
+	}
+	if c.OrderNumber == 0 {
+		c.OrderNumber = 99
+	}
+	if err := s.Repo.CreateChecklistItem(c); err != nil {
+		return nil, err
+	}
+	return c, nil
+}

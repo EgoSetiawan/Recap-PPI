@@ -74,6 +74,7 @@ func main() {
 		authed.DELETE("/inspections/:id", h.DeleteInspection)
 		authed.POST("/inspections", h.CreateInspection)
 		authed.GET("/checklist-items", h.ListChecklist)
+		authed.POST("/checklist-items", h.CreateChecklist)
 		authed.GET("/inspections/:id/pdf", h.CreatePDFReport)
 		authed.GET("/rooms", h.ListRooms)
 	}
