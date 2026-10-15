@@ -173,10 +173,10 @@ async function main() {
     ];
 
     const totalInspections =
-    (totals.open || 0) +
-    (totals.submitted || 0) +
-    (totals.approved || 0) +
-    (totals.rejected || 0);
+      (totals.open || 0) +
+      (totals.submitted || 0) +
+      (totals.approved || 0) +
+      (totals.rejected || 0);
 
     document.getElementById("status-bars").innerHTML = statusSummary
       .map((item) => {

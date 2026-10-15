@@ -1,27 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Detail Pemeriksaan — RSU Dr. H. Koesnadi</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../assets/css/components/modal.css" />
-  <link rel="stylesheet" href="../assets/css/app.css" />
-  <script src="../assets/js/config.js"></script>
-</head>
-<body>
-  <div id="app">
-    <div class="page-header mb-3 flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1>Detail Pemeriksaan</h1>
-        <p class="page-meta" id="detail-sub">Rekaman historis pemeriksaan ruangan.</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Detail Pemeriksaan — RSU Dr. H. Koesnadi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../assets/css/components/modal.css" />
+    <link rel="stylesheet" href="../assets/css/app.css" />
+    <script src="../assets/js/config.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="page-header mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1>Detail Pemeriksaan</h1>
+          <p class="page-meta" id="detail-sub">Rekaman historis pemeriksaan ruangan.</p>
+        </div>
+        <div class="row-actions" id="header-actions"></div>
       </div>
-      <div class="row-actions" id="header-actions"></div>
+      <div id="detail-root"></div>
     </div>
-    <div id="detail-root"></div>
-  </div>
-  <script type="module" src="../assets/js/pages/inspection-detail.js"></script>
-</body>
+    <script type="module" src="../assets/js/pages/inspection-detail.js"></script>
+  </body>
 </html>

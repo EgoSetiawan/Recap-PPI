@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Ruangan — RSU Dr. H. Koesnadi</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="../assets/css/app.css" />
+    <script src="../assets/js/config.js"></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <!-- Page header -->
+      <div class="page-header mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1>Ruangan</h1>
+          <p class="page-meta">
+            Daftar ruangan beserta anggota PPI yang bertugas di setiap ruangan.
+          </p>
+        </div>
+
+        <button type="button" class="btn hidden" id="btn-add-room">Tambah Ruangan</button>
+      </div>
+
+      <!-- Search filter -->
+      <div class="filters">
+        <div class="form-group" style="margin: 0; width: 100%">
+          <label for="filter-q">Cari Ruangan</label>
+          <input id="filter-q" type="search" placeholder="Cari nama atau kode ruangan..." />
+        </div>
+      </div>
+
+      <!-- Room table populated by rooms.js -->
+      <div class="section">
+        <div class="section-body" style="padding: 0" id="rooms-table"></div>
+      </div>
+    </div>
+
+    <script type="module" src="../assets/js/pages/rooms.js"></script>
+  </body>
+</html>
+
