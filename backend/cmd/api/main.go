@@ -70,13 +70,14 @@ func main() {
 		authed.GET("/me", h.Me)
 		authed.GET("/dashboard", h.Dashboard)
 		authed.GET("/inspections", h.ListInspections)
+		authed.POST("/inspections", h.CreateInspection)
 		authed.GET("/inspections/:id", h.GetInspection)
 		authed.DELETE("/inspections/:id", h.DeleteInspection)
-		authed.POST("/inspections", h.CreateInspection)
 		authed.GET("/checklist-items", h.ListChecklist)
 		authed.POST("/checklist-items", h.CreateChecklist)
 		authed.GET("/inspections/:id/pdf", h.CreatePDFReport)
 		authed.GET("/rooms", h.ListRooms)
+		authed.POST("/edit-checklist", h.ReplaceChecklistForDate)
 	}
 
 	addr := ":" + cfg.Port

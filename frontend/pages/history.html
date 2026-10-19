@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Riwayat Pemeriksaan — RSU Dr. H. Koesnadi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../assets/css/app.css" />
+    <script src="../assets/js/config.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="page-header mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1>Riwayat Pemeriksaan</h1>
+          <p class="page-meta">Arsip permanen setiap pemeriksaan yang telah selesai.</p>
+        </div>
+      </div>
+      <div class="filters">
+        <div class="form-group" style="margin: 0">
+          <label>Hasil</label>
+          <select id="filter-result">
+            <option value="">Semua</option>
+            <option value="PASSED">Baik</option>
+            <option value="NEEDS_REPAIR">Perlu Perbaikan</option>
+            <option value="FAILED">Tidak Sesuai</option>
+          </select>
+        </div>
+      </div>
+      <div class="section"><div class="section-body" style="padding: 0" id="table"></div></div>
+    </div>
+    <script type="module" src="../assets/js/pages/history.js"></script>
+  </body>
+</html>

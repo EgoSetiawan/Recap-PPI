@@ -310,3 +310,76 @@ func (s *Service) DeleteInspection(actor *model.User, id int64) error {
 
 	return nil
 }
+
+func (s *Service) ReplaceChecklistForDate(inspectionID int64, answerDate time.Time, items []model.ChecklistAnswer) error {
+	// Check that the inspection exists.
+	ins, err := s.Repo.GetInspection(inspectionID)
+	if err != nil {
+		return err
+	}
+	if ins == nil {
+		return response.Err(
+			"NOT_FOUND",
+			"Inspection not found",
+			http.StatusNotFound,
+		)
+	}
+	// Ensure the inspection has a valid month.
+	if ins.InspectionMonth.IsZero() {
+		return response.Err(
+			"VALIDATION_ERROR",
+			"Inspection month is missing",
+			http.StatusUnprocessableEntity,
+		)
+	}
+	// Normalize the selected date.
+	answerDate = time.Date(
+		answerDate.Year(),
+		answerDate.Month(),
+		answerDate.Day(),
+		0, 0, 0, 0,
+		time.UTC,
+	)
+	// Allow editing only within the inspection's month.
+	monthStart := time.Date(
+		ins.InspectionMonth.Year(),
+		ins.InspectionMonth.Month(),
+		1,
+		0, 0, 0, 0,
+		time.UTC,
+	)
+	nextMonth := monthStart.AddDate(0, 1, 0)
+	if answerDate.Before(monthStart) ||
+		!answerDate.Before(nextMonth) {
+		return response.Err(
+			"VALIDATION_ERROR",
+			"The selected date must belong to the inspection month",
+			http.StatusUnprocessableEntity,
+		)
+	}
+	// Prevent duplicate checklist item IDs.
+	seen := make(map[int64]struct{}, len(items))
+	for _, item := range items {
+		if item.ChecklistItemID <= 0 {
+			return response.Err(
+				"VALIDATION_ERROR",
+				"Invalid checklist item ID",
+				http.StatusUnprocessableEntity,
+			)
+		}
+		if _, exists := seen[item.ChecklistItemID]; exists {
+			return response.Err(
+				"VALIDATION_ERROR",
+				"Duplicate checklist item ID",
+				http.StatusUnprocessableEntity,
+			)
+		}
+		seen[item.ChecklistItemID] = struct{}{}
+	}
+	// Replace answers only for the selected date.
+	return s.Repo.ReplaceChecklistForDate(
+		inspectionID,
+		answerDate,
+		items,
+	)
+}

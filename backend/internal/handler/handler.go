@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"PPI/internal/middleware"
@@ -16,6 +17,11 @@ import (
 
 type Handler struct {
 	Svc *service.Service
+}
+
+type ReplaceChecklistForDateRequest struct {
+	AnswerDate string                  `json:"answer_date"`
+	Items      []model.ChecklistAnswer `json:"items"`
 }
 
 func New(svc *service.Service) *Handler {
@@ -215,4 +221,68 @@ func (h *Handler) CreateChecklist(c *gin.Context) {
 		return
 	}
 	response.Created(c, created, "Checklist item created")
+}
+
+func (h *Handler) ReplaceChecklistForDate(c *gin.Context) {
+	id, err := parseID(c, "id")
+	if err != nil || id <= 0 {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"Invalid inspection ID",
+			http.StatusBadRequest,
+		)
+		return
+	}
+	var in ReplaceChecklistForDateRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.FailCode(
+			c,
+			"INVALID_JSON",
+			"Invalid request body",
+			http.StatusBadRequest,
+		)
+		return
+	}
+	// Parse the date in YYYY-MM-DD format.
+	answerDate, err := time.Parse(
+		"2006-01-02",
+		strings.TrimSpace(in.AnswerDate),
+	)
+	if err != nil {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"Answer date must use YYYY-MM-DD format",
+			http.StatusBadRequest,
+		)
+		return
+	}
+	// Require the items field, but an explicit empty array is allowed.
+	if in.Items == nil {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"Items field is required",
+			http.StatusBadRequest,
+		)
+		return
+	}
+	err = h.Svc.ReplaceChecklistForDate(
+		id,
+		answerDate,
+		in.Items,
+	)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(
+		c,
+		gin.H{
+			"inspection_id": id,
+			"answer_date":   answerDate.Format("2006-01-02"),
+		},
+		"Checklist answers updated",
+	)
 }

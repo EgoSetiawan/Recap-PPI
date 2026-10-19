@@ -193,33 +193,37 @@ func (r *Repo) ListInspections(f InspectionFilter) ([]model.Inspection, error) {
 	conds := []string{}
 	args := []interface{}{}
 	n := 1
+
 	// Restrict to allowed room IDs.
 	if f.ScopeIDs != nil {
 		if len(f.ScopeIDs) == 0 {
 			return []model.Inspection{}, nil
 		}
+
 		ph := make([]string, len(f.ScopeIDs))
 		for i, id := range f.ScopeIDs {
 			ph[i] = fmt.Sprintf("$%d", n)
 			args = append(args, id)
 			n++
 		}
+
 		conds = append(
 			conds,
 			"i.room_id IN ("+strings.Join(ph, ",")+")",
 		)
 	}
-	// Specific room.
+
+	// Filter by room.
 	if f.RoomID != nil {
 		conds = append(
 			conds,
 			fmt.Sprintf("i.room_id = $%d", n),
 		)
-
 		args = append(args, *f.RoomID)
 		n++
 	}
-	// Specific inspector.
+
+	// Filter by inspector.
 	if f.InspectorID != nil {
 		conds = append(
 			conds,
@@ -228,25 +232,24 @@ func (r *Repo) ListInspections(f InspectionFilter) ([]model.Inspection, error) {
 		args = append(args, *f.InspectorID)
 		n++
 	}
-	// Status.
+
+	// Filter by status.
 	if f.Status != "" {
 		conds = append(
 			conds,
 			fmt.Sprintf("i.status = $%d", n),
 		)
-
 		args = append(args, f.Status)
 		n++
 	}
-	// Specific month.
+
+	// Filter by month.
 	if f.Month != nil {
 		conds = append(
 			conds,
-			fmt.Sprintf(
-				"i.inspection_month = $%d",
-				n,
-			),
+			fmt.Sprintf("i.inspection_month = $%d", n),
 		)
+
 		month := time.Date(
 			f.Month.Year(),
 			f.Month.Month(),
@@ -258,23 +261,28 @@ func (r *Repo) ListInspections(f InspectionFilter) ([]model.Inspection, error) {
 		args = append(args, month)
 		n++
 	}
-	q := inspectionSelect
+
+	query := inspectionSelect
+
 	if len(conds) > 0 {
-		q += " WHERE " + strings.Join(conds, " AND ")
+		query += " WHERE " + strings.Join(conds, " AND ")
 	}
-	q += `
+
+	query += `
 		ORDER BY
 			i.inspection_month DESC,
 			i.id DESC
 	`
-	rows, err := r.DB.Query(q, args...)
+
+	rows, err := r.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	out := []model.Inspection{}
+	out := make([]model.Inspection, 0)
 
+	// Scan inspection records.
 	for rows.Next() {
 		ins, err := scanInspection(rows)
 		if err != nil {
@@ -288,6 +296,21 @@ func (r *Repo) ListInspections(f InspectionFilter) ([]model.Inspection, error) {
 
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	// Close the inspection query before loading room details.
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+
+	// Populate the Room field for every inspection.
+	for i := range out {
+		room, err := r.GetRoom(out[i].RoomID)
+		if err != nil {
+			return nil, err
+		}
+
+		out[i].Room = room
 	}
 
 	return out, nil

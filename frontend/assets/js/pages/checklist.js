@@ -23,10 +23,7 @@ async function main() {
   const roleId = Number(currentUser?.role_id);
 
   const roleName = String(
-    currentUser?.role ??
-    currentUser?.role_name ??
-    currentUser?.roleName ??
-    ""
+    currentUser?.role ?? currentUser?.role_name ?? currentUser?.roleName ?? "",
   )
     .trim()
     .toUpperCase()
@@ -34,9 +31,7 @@ async function main() {
 
   // Super Admin can manage checklist items.
   const canManageChecklist =
-    roleId === 1 ||
-    roleName === "SUPER_ADMIN" ||
-    hasPermission("checklist.manage");
+    roleId === 1 || roleName === "SUPER_ADMIN" || hasPermission("checklist.manage");
 
   const roomTypes = {
     ALL: "Semua Ruangan",
@@ -87,7 +82,7 @@ async function main() {
                 >
                   ${label}
                 </option>
-              `
+              `,
             )
             .join("")}
         </select>
@@ -146,9 +141,7 @@ async function main() {
                   room_type: form.room_type || "ALL",
                   description: String(form.description || "").trim(),
                   order_number: Number(form.order_number),
-                  is_required: el.querySelector(
-                    '[name="is_required"]'
-                  ).checked,
+                  is_required: el.querySelector('[name="is_required"]').checked,
                 },
               });
 
@@ -170,9 +163,9 @@ async function main() {
   async function load() {
     const { data } = await api("/checklist-items");
 
-    const items = (Array.isArray(data) ? data : []).slice().sort(
-      (a, b) => (a.order_number ?? 0) - (b.order_number ?? 0)
-    );
+    const items = (Array.isArray(data) ? data : [])
+      .slice()
+      .sort((a, b) => (a.order_number ?? 0) - (b.order_number ?? 0));
 
     table.innerHTML = `
       <div class="${tableWrap}">
@@ -209,9 +202,7 @@ async function main() {
 
                           <td>
                             ${escapeHtml(
-                              roomTypes[item.room_type] ||
-                              item.room_type ||
-                              "Semua Ruangan"
+                              roomTypes[item.room_type] || item.room_type || "Semua Ruangan",
                             )}
                           </td>
 
@@ -223,7 +214,7 @@ async function main() {
                             ${item.order_number ?? "—"}
                           </td>
                         </tr>
-                      `
+                      `,
                     )
                     .join("")
                 : `
