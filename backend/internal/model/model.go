@@ -76,6 +76,7 @@ type Inspection struct {
 	Checklist       []ChecklistAnswer `json:"checklist"`
 	Signatures      []Signature       `json:"signatures,omitempty"`
 	Room            *Room             `json:"room,omitempty"`
+	InspectorName   string            `json:"inspector_name,omitempty"`
 	CreatedAt       time.Time         `json:"created_at"`
 	UpdatedAt       time.Time         `json:"updated_at"`
 }

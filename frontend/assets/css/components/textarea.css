@@ -1,0 +1,18 @@
+#inspection-notes,
+#inspection-notes:focus,
+#inspection-notes:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+
+  border: 1px solid #d1d5db !important;
+  border-style: solid !important;
+  border-radius: 8px;
+
+  --tw-shadow: 0 0 #0000 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-inset-shadow: 0 0 #0000 !important;
+  --tw-inset-ring-shadow: 0 0 #0000 !important;
+}

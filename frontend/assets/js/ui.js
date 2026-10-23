@@ -81,3 +81,15 @@ export const statGrid =
   "stat-grid mb-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(160px,1fr))]";
 export const statCard =
   "stat-card min-w-0 rounded-xl border border-border bg-surface px-4 py-3.5 shadow-sm transition-shadow duration-150 hover:shadow-md";
+export const textarea = [
+  "app-textarea",
+  "block",
+  "box-border",
+  "w-full",
+  "rounded-lg",
+  "border",
+  "border-gray-300",
+  "p-3",
+  "resize-y",
+  "text-right",
+].join(" ");

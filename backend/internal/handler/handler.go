@@ -99,7 +99,16 @@ func (h *Handler) GetInspection(c *gin.Context) {
 }
 
 func (h *Handler) ListInspections(c *gin.Context) {
+	h.listInspections(c, "", true)
+}
+
+func (h *Handler) ListOpenInspections(c *gin.Context) {
+	h.listInspections(c, "OPEN", false)
+}
+
+func (h *Handler) listInspections(c *gin.Context, status string, excludeOpen bool) {
 	var roomID *int64
+
 	if v := c.Query("room_id"); v != "" {
 		id, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
@@ -113,7 +122,9 @@ func (h *Handler) ListInspections(c *gin.Context) {
 		}
 		roomID = &id
 	}
+
 	var month *time.Time
+
 	if v := c.Query("month"); v != "" {
 		t, err := time.Parse("2006-01-02", v)
 		if err != nil {
@@ -127,16 +138,35 @@ func (h *Handler) ListInspections(c *gin.Context) {
 		}
 		month = &t
 	}
+
 	list, err := h.Svc.ListInspections(
 		middleware.CurrentUser(c),
 		roomID,
-		c.Query("status"),
+		status,
 		month,
 	)
 	if err != nil {
 		response.Fail(c, err)
 		return
 	}
+
+	if excludeOpen {
+		filtered := make([]model.Inspection, 0, len(list))
+
+		for _, inspection := range list {
+			if strings.EqualFold(
+				strings.TrimSpace(inspection.Status),
+				"OPEN",
+			) {
+				continue
+			}
+
+			filtered = append(filtered, inspection)
+		}
+
+		list = filtered
+	}
+
 	response.OK(c, list, "Inspections retrieved")
 }
 

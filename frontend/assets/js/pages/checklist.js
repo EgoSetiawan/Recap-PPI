@@ -191,9 +191,7 @@ async function main() {
                           <td>${index + 1}</td>
 
                           <td>
-                            <strong>
                               ${escapeHtml(item.name || "—")}
-                            </strong>
                           </td>
 
                           <td>

@@ -64,9 +64,14 @@ const NAV_SECTIONS = [
         roles: ["KEPALA"],
       },
       {
-        href: "history.html",
+        href: "open-inspection.html",
+        label: "Pemeriksaan",
+        roles: ["SUPER_ADMIN", "KEPALA", "ANGGOTA"],
+      },
+      {
+        href: "latest.html",
         label: "Riwayat Pemeriksaan",
-        roles: ["SUPER_ADMIN", "KEPALA"],
+        roles: ["SUPER_ADMIN", "KEPALA", "ANGGOTA"],
       },
     ],
   },

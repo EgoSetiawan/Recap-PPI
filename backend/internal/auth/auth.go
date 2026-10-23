@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -24,8 +25,12 @@ func CheckPassword(hash, password string) bool {
 }
 
 func IsRoomScoped(role string) bool {
-	r := NormalizeRole(role)
-	return r == RoleAnggota // for assign room head, only head of room can be assigned
+	switch NormalizeRole(role) {
+	case NormalizeRole(RoleAnggota), "ANGGOTA": // for assign room head, only head of room can be assigned
+		return true
+	default:
+		return false
+	}
 }
 
 func IssueToken(secret string, ttl time.Duration, userID int64, role, jti string) (string, time.Time, error) {
@@ -66,11 +71,30 @@ const (
 )
 
 func NormalizeRole(role string) string {
-	return role
+	role = strings.ToUpper(strings.TrimSpace(role))
+	role = strings.ReplaceAll(role, "-", "_")
+	role = strings.ReplaceAll(role, " ", "_")
+
+	switch role {
+	case "ANGGOTA":
+		return RoleAnggota
+	case "KEPALA":
+		return RoleKepala
+	default:
+		return role
+	}
+}
+
+func IsAnggota(role string) bool {
+	return NormalizeRole(role) == RoleAnggota
+}
+
+func IsKepala(role string) bool {
+	return NormalizeRole(role) == RoleKepala
 }
 
 func IsAdmin(role string) bool {
-	return role == RoleSuperAdmin
+	return NormalizeRole(role) == RoleSuperAdmin
 }
 
 func DefaultTitle(role string) string {

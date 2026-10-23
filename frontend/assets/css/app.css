@@ -2938,6 +2938,371 @@
     font-size: 22px;
   }
 }
+/* =========================================
+   Monthly Inspection Calendar
+========================================= */
+
+.inspection-calendar {
+  --calendar-bg: #111827;
+  --calendar-card: #202b3d;
+  --calendar-card-hover: #293951;
+  --calendar-border: #35445a;
+  --calendar-text: #e8eef8;
+  --calendar-muted: #9aabc3;
+  --calendar-blue: #60a5fa;
+
+  width: 100%;
+  padding: clamp(14px, 2.6vw, 25px);
+  color: var(--calendar-text);
+  background:
+    radial-gradient(
+      ellipse at top right,
+      #1c2b43 0%,
+      transparent 45%
+    ),
+    linear-gradient(145deg, #151e2d, #101521 80%);
+  border: 1px solid #2c3a50;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 18%);
+}
+
+.inspection-calendar,
+.inspection-calendar * {
+  box-sizing: border-box;
+}
+
+.inspection-calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.inspection-calendar__eyebrow {
+  margin: 0 0 7px;
+  color: #8da8cd;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.inspection-calendar__title {
+  margin: 0;
+  color: #f8fafc;
+  font-size: clamp(21px, 3vw, 29px);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  text-transform: capitalize;
+}
+
+.inspection-calendar__subtitle {
+  margin: 8px 0 0;
+  color: var(--calendar-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.inspection-calendar__summary {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 95px;
+  padding: 12px 15px;
+  background: rgb(37 99 235 / 10%);
+  border: 1px solid rgb(96 165 250 / 28%);
+  border-radius: 14px;
+}
+
+.inspection-calendar__summary strong {
+  color: #93c5fd;
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.inspection-calendar__summary span {
+  margin-top: 5px;
+  color: #b4c5dc;
+  font-size: 10px;
+  text-align: center;
+}
+
+.inspection-calendar__weekdays,
+.inspection-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: clamp(4px, 1vw, 9px);
+}
+
+.inspection-calendar__weekdays {
+  margin-bottom: 8px;
+}
+
+.inspection-calendar__weekday {
+  padding: 8px 2px;
+  color: #a8b7cc;
+  font-size: 11px;
+  font-weight: 750;
+  text-align: center;
+}
+
+.inspection-calendar__weekday.is-sunday {
+  color: #fda4af;
+}
+
+.inspection-calendar__blank {
+  min-width: 0;
+  min-height: 1px;
+}
+
+/* Calendar day cards */
+.inspection-calendar .inspection-calendar__day {
+  display: flex;
+  min-width: 0;
+  min-height: 85px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 3px 9px;
+  color: var(--calendar-text);
+  background: linear-gradient(145deg, #222d40, #1b2433);
+  border: 1px solid var(--calendar-border);
+  border-radius: 12px;
+  cursor: pointer;
+  appearance: none;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.inspection-calendar .inspection-calendar__day:hover {
+  background: var(--calendar-card-hover);
+  border-color: #6b8fbd;
+  transform: translateY(-2px);
+}
+
+.inspection-calendar .inspection-calendar__day:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+/* Selected day */
+.inspection-calendar .inspection-calendar__day.is-selected {
+  background: linear-gradient(145deg, #1c477e, #183458);
+  border-color: var(--calendar-blue);
+  box-shadow:
+    0 0 0 2px rgb(59 130 246 / 18%),
+    0 8px 18px rgb(37 99 235 / 13%);
+}
+
+.inspection-calendar__day-number {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+  place-items: center;
+  color: #eaf2ff;
+  background: #344258;
+  border: 1px solid rgb(255 255 255 / 4%);
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.inspection-calendar .inspection-calendar__day.is-selected
+  .inspection-calendar__day-number {
+  color: #fff;
+  background: #2563eb;
+  border-color: #60a5fa;
+  box-shadow: 0 4px 10px rgb(37 99 235 / 35%);
+}
+
+/* Saved-answer indicator and progress */
+.inspection-calendar__day-status {
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 10px;
+  color: #8fa0b8;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.inspection-calendar__day-status-text {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspection-calendar__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  background: #607087;
+  border-radius: 50%;
+}
+
+.inspection-calendar__dot--saved {
+  background: #34d399;
+  box-shadow: 0 0 9px rgb(52 211 153 / 35%);
+}
+
+.inspection-calendar__dot--complete {
+  background: #6ee7b7;
+  box-shadow: 0 0 10px rgb(52 211 153 / 48%);
+}
+
+.inspection-calendar .inspection-calendar__day.is-selected
+  .inspection-calendar__day-status {
+  color: #c8e0ff;
+}
+
+/* Legend */
+
+.inspection-calendar__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #2a3548;
+}
+
+.inspection-calendar__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #a8b6c9;
+  font-size: 11px;
+}
+
+.inspection-calendar__legend-selected {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background: #1c477e;
+  border: 1px solid var(--calendar-blue);
+  border-radius: 4px;
+}
+
+/* Tablet and mobile */
+
+@media (max-width: 640px) {
+  .inspection-calendar {
+    padding: 14px 10px;
+    border-radius: 15px;
+  }
+
+  .inspection-calendar__header {
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .inspection-calendar__summary {
+    min-width: 70px;
+    padding: 9px 8px;
+    border-radius: 11px;
+  }
+
+  .inspection-calendar__summary strong {
+    font-size: 21px;
+  }
+
+  .inspection-calendar__summary span {
+    font-size: 9px;
+  }
+
+  .inspection-calendar__weekdays,
+  .inspection-calendar__grid {
+    gap: 5px;
+  }
+
+  .inspection-calendar__weekday {
+    padding: 7px 0;
+    font-size: 10px;
+  }
+
+  .inspection-calendar .inspection-calendar__day {
+    min-height: 66px;
+    gap: 7px;
+    padding: 7px 1px;
+    border-radius: 9px;
+  }
+
+  .inspection-calendar__day-number {
+    width: 25px;
+    height: 25px;
+    flex-basis: 25px;
+    border-radius: 7px;
+    font-size: 12px;
+  }
+
+  .inspection-calendar__day-status {
+    gap: 3px;
+    font-size: 8px;
+  }
+
+  .inspection-calendar__dot {
+    width: 6px;
+    height: 6px;
+    flex-basis: 6px;
+  }
+
+  .inspection-calendar__legend {
+    gap: 9px 13px;
+    margin-top: 16px;
+    padding-top: 13px;
+  }
+
+  .inspection-calendar__legend-item {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 390px) {
+  .inspection-calendar__header {
+    align-items: flex-start;
+  }
+
+  .inspection-calendar__subtitle {
+    font-size: 11px;
+  }
+
+  .inspection-calendar__weekdays,
+  .inspection-calendar__grid {
+    gap: 3px;
+  }
+
+  .inspection-calendar .inspection-calendar__day {
+    min-height: 56px;
+    padding: 5px 0;
+  }
+
+  .inspection-calendar__day-status-text {
+    max-width: 27px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inspection-calendar .inspection-calendar__day {
+    transition: none;
+  }
+}
+
 @media (max-width: 767px) {
   h1 {
     font-size: 22px;

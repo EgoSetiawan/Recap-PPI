@@ -305,12 +305,28 @@ func (r *Repo) ListInspections(f InspectionFilter) ([]model.Inspection, error) {
 
 	// Populate the Room field for every inspection.
 	for i := range out {
+		// Load room details.
 		room, err := r.GetRoom(out[i].RoomID)
 		if err != nil {
 			return nil, err
 		}
-
 		out[i].Room = room
+
+		// Load inspector name.
+		var inspectorName string
+		err = r.DB.QueryRow(
+			`SELECT name FROM users WHERE id = $1`,
+			out[i].InspectorID,
+		).Scan(&inspectorName)
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				continue
+			}
+			return nil, err
+		}
+
+		out[i].InspectorName = inspectorName
 	}
 
 	return out, nil

@@ -1,9 +1,7 @@
 package service
 
 import (
-
 	// "mime/multipart"
-
 	"database/sql"
 	"net/http"
 	"strings"
@@ -72,7 +70,7 @@ func validSignatureImage(url string) bool {
 // }
 
 func (s *Service) kepalaSig(actor *model.User, imageDataURL string) *model.Signature {
-	if actor == nil || actor.Role != "KEPALA" {
+	if actor == nil || !auth.IsKepala(actor.Role) {
 		return nil
 	}
 	imageDataURL = strings.TrimSpace(imageDataURL)
@@ -104,7 +102,7 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		)
 	}
 
-	if actor.Role != "ANGGOTA" {
+	if !auth.IsAnggota(actor.Role) {
 		return nil, response.Err(
 			"FORBIDDEN",
 			"Hanya Anggota yang dapat membuat pemeriksaan",
@@ -192,10 +190,10 @@ func (s *Service) SaveChecklist(actor *model.User, inspectionID int64, in SaveCh
 		)
 	}
 
-	if actor.Role != "ANGGOTA" {
+	if !auth.IsAnggota(actor.Role) {
 		return nil, response.Err(
 			"FORBIDDEN",
-			"Hanya Anggota yang dapat mengisi pemeriksaan",
+			"Hanya Anggota yang dapat membuat pemeriksaan",
 			http.StatusForbidden,
 		)
 	}
@@ -258,8 +256,9 @@ func (s *Service) ListInspections(actor *model.User, roomID *int64, status strin
 			http.StatusUnauthorized,
 		)
 	}
+	scopeIDs := scopeRoomIDs(actor)
 	return s.Repo.ListInspections(repository.InspectionFilter{
-		ScopeIDs: scopeRoomIDs(actor),
+		ScopeIDs: scopeIDs,
 		RoomID:   roomID,
 		Status:   status,
 		Month:    month,
@@ -285,7 +284,7 @@ func (s *Service) getInspectionForActor(actor *model.User, id int64) (*model.Ins
 			http.StatusNotFound,
 		)
 	}
-	if actor.Role == "ANGGOTA" {
+	if auth.IsAnggota(actor.Role) {
 		if err := assertRoomAccess(actor, ins.RoomID); err != nil {
 			return nil, err
 		}
@@ -330,6 +329,14 @@ func (s *Service) ReplaceChecklistForDate(inspectionID int64, answerDate time.Ti
 			"VALIDATION_ERROR",
 			"Inspection month is missing",
 			http.StatusUnprocessableEntity,
+		)
+	}
+	// Can edit when status were open
+	if strings.ToUpper(strings.TrimSpace(ins.Status)) != "OPEN" {
+		return response.Err(
+			"INSPECTION_LOCKED",
+			"Only open inspections can be edited",
+			http.StatusConflict,
 		)
 	}
 	// Normalize the selected date.

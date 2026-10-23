@@ -30,8 +30,8 @@
       "destination": "/pages/inspection-detail.html"
     },
     {
-      "source": "/pages/history",
-      "destination": "/pages/history.html"
+      "source": "/pages/open-inspection",
+      "destination": "/pages/open-inspection.html"
     },
     {
       "source": "/pages/checklist",
@@ -40,6 +40,14 @@
     {
       "source": "/pages/rooms",
       "destination": "/pages/rooms.html"
+    },
+    {
+      "source": "/pages/inspection",
+      "destination": "/pages/inspection.html"
+    },
+    {
+      "source": "/pages/latest",
+      "destination": "/pages/latest.html"
     }
   ]
 }
