@@ -1,0 +1,67 @@
+/* Unsaved dates in the monthly calendar */
+.inspection-calendar__day.is-dirty {
+  border-color: #f59e0b;
+}
+
+.inspection-calendar__dot--pending {
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
+}
+
+.inspection-calendar__pending-note {
+  margin: 12px 0 0;
+  color: #f59e0b;
+  font-size: 0.875rem;
+}
+
+/* Checklist inputs */
+#daily-checklist select[data-status],
+#daily-checklist textarea[data-notes] {
+  width: 100%;
+  min-width: 130px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: 8px;
+  background: var(--color-surface, #fff);
+  color: inherit;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+#daily-checklist textarea[data-notes] {
+  min-width: 180px;
+  min-height: 52px;
+  resize: vertical;
+}
+
+#daily-checklist select[data-status]:focus,
+#daily-checklist textarea[data-notes]:focus {
+  outline: 2px solid var(--color-primary-soft, #bfdbfe);
+  border-color: var(--color-primary, #2563eb);
+}
+
+/* Anggota and Kepala Ruangan signature canvases */
+#sig-root,
+#kepala-signature-root {
+  width: 100%;
+}
+
+#sig-root canvas,
+#kepala-signature-root canvas,
+.kepala-signature-canvas {
+  display: block;
+  width: 100%;
+  height: 260px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  touch-action: none;
+}
+
+@media (max-width: 640px) {
+  #sig-root canvas,
+  #kepala-signature-root canvas,
+  .kepala-signature-canvas {
+    height: 220px;
+  }
+}

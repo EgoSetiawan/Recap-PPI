@@ -18,7 +18,6 @@ import {
   btn,
   btnSecondary,
   empty,
-  textarea,
   section,
   sectionHeader,
   sectionBody,
@@ -28,7 +27,7 @@ import {
 import { SignaturePad } from "../signature.js";
 
 // ==================================================
-// HELPERS
+// SIGNATURE DISPLAY
 // ==================================================
 
 function sigBlock(title, sig) {
@@ -77,11 +76,17 @@ function sigBlock(title, sig) {
   `;
 }
 
+// ==================================================
+// ERROR
+// ==================================================
+
 function showError(message) {
   const actions = document.getElementById("header-actions");
   const root = document.getElementById("detail-root");
 
-  if (actions) actions.innerHTML = "";
+  if (actions) {
+    actions.innerHTML = "";
+  }
 
   if (root) {
     root.innerHTML = `
@@ -105,25 +110,20 @@ function showError(message) {
 async function setupDailyChecklist(inspection) {
   const dateInput = document.getElementById("answer-date");
   const dateList = document.getElementById("daily-date-list");
-  const checklistContainer =
-    document.getElementById("daily-checklist");
+  const checklistContainer = document.getElementById("daily-checklist");
   const progress = document.getElementById("day-progress");
   const saveButton = document.getElementById("btn-save-day");
 
   const isEditable =
     String(inspection.status || "").trim().toUpperCase() === "OPEN";
 
-  if (
-    !dateInput ||
-    !dateList ||
-    !checklistContainer ||
-    !progress ||
-    !saveButton
-  ) {
+  if (!dateInput || !dateList || !checklistContainer || !progress) {
     throw new Error("Elemen pemeriksaan harian tidak ditemukan.");
   }
 
-  saveButton.hidden = !isEditable;
+  if (isEditable && !saveButton) {
+    throw new Error("Tombol simpan perubahan tidak ditemukan.");
+  }
 
   const monthKey = String(
     inspection.inspection_month || "",
@@ -134,7 +134,10 @@ async function setupDailyChecklist(inspection) {
   }
 
   const [year, month] = monthKey.split("-").map(Number);
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+  const lastDay = new Date(
+    Date.UTC(year, month, 0),
+  ).getUTCDate();
 
   dateInput.min = `${monthKey}-01`;
   dateInput.max =
@@ -151,7 +154,7 @@ async function setupDailyChecklist(inspection) {
     ? definitionData
     : [];
 
-  // Existing answers for the inspection.
+  // Existing checklist answers.
   let answers =
     Array.isArray(inspection.checklist_detail) &&
     inspection.checklist_detail.length
@@ -160,6 +163,27 @@ async function setupDailyChecklist(inspection) {
         ? inspection.checklist
         : [];
 
+  /*
+   * TEMPORARY DRAFTS
+   *
+   * Map key: YYYY-MM-DD
+   *
+   * Value:
+   * {
+   *   answer_date: "2026-10-02",
+   *   items: [
+   *     {
+   *       checklist_item_id: 1,
+   *       status: "GOOD",
+   *       notes: "..."
+   *     }
+   *   ]
+   * }
+   *
+   * Drafts only stay in memory until saved or the page is closed.
+   */
+  const draftDays = new Map();
+
   const getAnswerDate = (answer) =>
     String(answer.answer_date || "").slice(0, 10);
 
@@ -167,18 +191,41 @@ async function setupDailyChecklist(inspection) {
     ...new Set(
       answers
         .map(getAnswerDate)
-        .filter((date) => date.startsWith(`${monthKey}-`)),
+        .filter(
+          (date) =>
+            /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+            date.startsWith(`${monthKey}-`),
+        ),
     ),
   ].sort();
 
   dateInput.value = savedDates[0] || `${monthKey}-01`;
 
+  // Return drafts first, otherwise load saved answers.
   function getAnswersForDate(date) {
+    const draft = draftDays.get(date);
+
+    if (draft) {
+      return draft.items.map((item) => ({
+        ...item,
+        answer_date: date,
+      }));
+    }
+
     return answers.filter(
       (answer) => getAnswerDate(answer) === date,
     );
   }
 
+  function hasMeaningfulData(date) {
+    return getAnswersForDate(date).some(
+      (item) =>
+        Boolean(item.status) ||
+        String(item.notes || "").trim() !== "",
+    );
+  }
+
+  // Calculate daily checklist progress.
   function getProgress(date) {
     const dayAnswers = getAnswersForDate(date);
 
@@ -214,8 +261,63 @@ async function setupDailyChecklist(inspection) {
     };
   }
 
+  /*
+   * Capture what is currently visible.
+   *
+   * This updates an existing draft before changing dates.
+   * It does not create a draft for an untouched date.
+   */
+  function captureVisibleDraft() {
+    if (!isEditable) return;
+
+    const date = dateInput.value;
+
+    if (!date || !draftDays.has(date)) return;
+
+    const rows = [
+      ...checklistContainer.querySelectorAll("tr[data-item-id]"),
+    ];
+
+    const items = rows.map((row) => ({
+      checklist_item_id: Number(row.dataset.itemId),
+      status: row.querySelector("[data-status]")?.value || null,
+      notes:
+        row.querySelector("[data-notes]")?.value.trim() || "",
+    }));
+
+    draftDays.set(date, {
+      answer_date: date,
+      items,
+    });
+  }
+
+  // Save the visible day's current form values to the draft Map.
+  function markVisibleDateDirty() {
+    if (!isEditable || !dateInput.value) return;
+
+    const date = dateInput.value;
+
+    const rows = [
+      ...checklistContainer.querySelectorAll("tr[data-item-id]"),
+    ];
+
+    if (!rows.length) return;
+
+    const items = rows.map((row) => ({
+      checklist_item_id: Number(row.dataset.itemId),
+      status: row.querySelector("[data-status]")?.value || null,
+      notes:
+        row.querySelector("[data-notes]")?.value.trim() || "",
+    }));
+
+    draftDays.set(date, {
+      answer_date: date,
+      items,
+    });
+  }
+
   // --------------------------------------------------
-  // RENDER CALENDAR
+  // RENDER THE CALENDAR
   // --------------------------------------------------
 
   function renderDateList() {
@@ -227,7 +329,9 @@ async function setupDailyChecklist(inspection) {
       month: "long",
       year: "numeric",
       timeZone: "UTC",
-    }).format(new Date(Date.UTC(year, month - 1, 1)));
+    }).format(
+      new Date(Date.UTC(year, month - 1, 1)),
+    );
 
     const weekdays = [
       "Min",
@@ -239,17 +343,17 @@ async function setupDailyChecklist(inspection) {
       "Sab",
     ];
 
-    const datesWithAnswers = Array.from(
+    const daysWithData = Array.from(
       { length: lastDay },
       (_, index) => {
         const date =
           `${monthKey}-${String(index + 1).padStart(2, "0")}`;
 
-        return getAnswersForDate(date).length > 0
-          ? date
-          : null;
+        return hasMeaningfulData(date) ? date : null;
       },
     ).filter(Boolean);
+
+    const pendingDates = [...draftDays.keys()].sort();
 
     const blanks = Array.from(
       { length: firstWeekday },
@@ -269,35 +373,30 @@ async function setupDailyChecklist(inspection) {
         const date =
           `${monthKey}-${String(day).padStart(2, "0")}`;
 
-        const dayProgress = getProgress(date);
+        const p = getProgress(date);
         const selected = date === dateInput.value;
-
-        const hasAnswers =
-          dayProgress.completed > 0 ||
-          getAnswersForDate(date).length > 0;
+        const dirty = draftDays.has(date);
+        const hasData = hasMeaningfulData(date);
 
         const complete =
-          dayProgress.total > 0 &&
-          dayProgress.completed >= dayProgress.total;
+          p.total > 0 && p.completed >= p.total;
 
-        const stateText = complete
-          ? "Lengkap"
-          : dayProgress.completed > 0
-            ? `${dayProgress.completed}/${dayProgress.total}`
-            : "—";
+        const stateText = dirty
+          ? "Belum disimpan"
+          : complete
+            ? "Lengkap"
+            : p.completed > 0
+              ? `${p.completed}/${p.total}`
+              : "—";
 
         return `
           <button
             type="button"
-            class="inspection-calendar__day${
-              selected ? " is-selected" : ""
-            }"
+            class="inspection-calendar__day${selected ? " is-selected" : ""}${dirty ? " is-dirty" : ""}"
             data-edit-date="${date}"
             aria-pressed="${selected}"
-            aria-label="Tanggal ${day}, ${monthTitle}. ${escapeHtml(
-              dayProgress.label,
-            )}"
-            title="${escapeHtml(dayProgress.label)}"
+            aria-label="Tanggal ${day}, ${monthTitle}. ${escapeHtml(p.label)}${dirty ? ". Ada perubahan belum disimpan" : ""}"
+            title="${escapeHtml(dirty ? "Perubahan belum disimpan" : p.label)}"
           >
             <span class="inspection-calendar__day-number">
               ${day}
@@ -305,15 +404,7 @@ async function setupDailyChecklist(inspection) {
 
             <span class="inspection-calendar__day-status">
               <span
-                class="inspection-calendar__dot${
-                  hasAnswers
-                    ? " inspection-calendar__dot--saved"
-                    : ""
-                }${
-                  complete
-                    ? " inspection-calendar__dot--complete"
-                    : ""
-                }"
+                class="inspection-calendar__dot${hasData ? " inspection-calendar__dot--saved" : ""}${complete ? " inspection-calendar__dot--complete" : ""}${dirty ? " inspection-calendar__dot--pending" : ""}"
               ></span>
 
               <span class="inspection-calendar__day-status-text">
@@ -349,8 +440,8 @@ async function setupDailyChecklist(inspection) {
             class="inspection-calendar__summary"
             aria-label="Jumlah tanggal yang memiliki jawaban"
           >
-            <strong>${datesWithAnswers.length}</strong>
-            <span>hari tersimpan</span>
+            <strong>${daysWithData.length}</strong>
+            <span>hari terisi</span>
           </div>
         </header>
 
@@ -362,9 +453,7 @@ async function setupDailyChecklist(inspection) {
             .map(
               (day, index) => `
                 <div
-                  class="inspection-calendar__weekday${
-                    index === 0 ? " is-sunday" : ""
-                  }"
+                  class="inspection-calendar__weekday${index === 0 ? " is-sunday" : ""}"
                 >
                   ${day}
                 </div>
@@ -374,8 +463,7 @@ async function setupDailyChecklist(inspection) {
         </div>
 
         <div class="inspection-calendar__grid">
-          ${blanks}
-          ${dayCells}
+          ${blanks}${dayCells}
         </div>
 
         <div class="inspection-calendar__legend">
@@ -393,18 +481,37 @@ async function setupDailyChecklist(inspection) {
 
           <span class="inspection-calendar__legend-item">
             <span
-              class="inspection-calendar__legend-selected"
+              class="inspection-calendar__dot inspection-calendar__dot--pending"
             ></span>
+            Belum disimpan
+          </span>
+
+          <span class="inspection-calendar__legend-item">
+            <span class="inspection-calendar__legend-selected"></span>
             Tanggal dipilih
           </span>
         </div>
+
+        ${
+          pendingDates.length && isEditable
+            ? `
+              <p class="inspection-calendar__pending-note">
+                ${pendingDates.length}
+                tanggal memiliki perubahan lokal yang belum disimpan.
+              </p>
+            `
+            : ""
+        }
       </section>
     `;
 
-    // Select a calendar date.
-    dateList.querySelectorAll("[data-edit-date]").forEach(
-      (button) => {
+    dateList
+      .querySelectorAll("[data-edit-date]")
+      .forEach((button) => {
         button.addEventListener("click", () => {
+          // Preserve current edits before switching days.
+          captureVisibleDraft();
+
           dateInput.value = button.dataset.editDate;
 
           renderDateList();
@@ -415,12 +522,11 @@ async function setupDailyChecklist(inspection) {
             block: "start",
           });
         });
-      },
-    );
+      });
   }
 
   // --------------------------------------------------
-  // RENDER CHECKLIST FOR SELECTED DAY
+  // RENDER CHECKLIST FOR THE SELECTED DAY
   // --------------------------------------------------
 
   function renderDay() {
@@ -436,69 +542,41 @@ async function setupDailyChecklist(inspection) {
 
     const items = [...definitions].sort(
       (a, b) =>
-        (a.order_number ?? 999) - (b.order_number ?? 999),
+        (a.order_number ?? 999) -
+        (b.order_number ?? 999),
     );
 
-    const dayProgress = getProgress(selectedDate);
+    const p = getProgress(selectedDate);
 
     progress.textContent =
-      `${dayProgress.completed} dari ` +
-      `${dayProgress.total} item dinilai untuk ` +
+      `${p.completed} dari ${p.total} item dinilai untuk ` +
       `${selectedDate}.`;
 
     checklistContainer.innerHTML = `
       <div class="${sectionBody}" style="padding:0">
         <div class="table-wrap">
           <table class="data" style="border:none">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Penilaian</th>
+                <th>Catatan</th>
+              </tr>
+            </thead>
+
             <tbody>
               ${
                 items.length
                   ? items
                       .map((item) => {
-                        const answer = answerMap.get(Number(item.id));
-                        const currentStatus = answer?.status || "";
+                        const answer =
+                          answerMap.get(Number(item.id));
 
-                        const statusControl = isEditable
-                          ? `
-                            <select
-                              data-status
-                              aria-label="Penilaian ${escapeHtml(
-                                item.name || "",
-                              )}"
-                            >
-                              <option
-                                value=""
-                                ${
-                                  !currentStatus ? "selected" : ""
-                                }
-                              >
-                                Belum dinilai
-                              </option>
-
-                              <option
-                                value="GOOD"
-                                ${
-                                  currentStatus === "GOOD"
-                                    ? "selected"
-                                    : ""
-                                }
-                              >
-                                Baik
-                              </option>
-                            </select>
-                          `
-                          : `
-                            <span>
-                              ${
-                                currentStatus === "GOOD"
-                                  ? "Baik"
-                                  : "Belum dinilai"
-                              }
-                            </span>
-                          `;
+                        const currentStatus =
+                          answer?.status || "";
 
                         return `
-                          <tr data-item-id="${item.id}">
+                          <tr data-item-id="${Number(item.id)}">
                             <td>
                               <strong>
                                 ${escapeHtml(item.name || "—")}
@@ -516,14 +594,67 @@ async function setupDailyChecklist(inspection) {
                               }
                             </td>
 
-                            <td>${statusControl}</td>
+                            <td>
+                              ${
+                                isEditable
+                                  ? `
+                                    <select
+                                      data-status
+                                      aria-label="Penilaian ${escapeHtml(item.name || "")}"
+                                      style="min-width:140px"
+                                    >
+                                      <option
+                                        value=""
+                                        ${!currentStatus ? "selected" : ""}
+                                      >
+                                        Belum dinilai
+                                      </option>
+
+                                      <option
+                                        value="GOOD"
+                                        ${currentStatus === "GOOD" ? "selected" : ""}
+                                      >
+                                        Baik
+                                      </option>
+                                    </select>
+                                  `
+                                  : `
+                                    <span>
+                                      ${
+                                        currentStatus === "GOOD"
+                                          ? "Baik"
+                                          : "Belum dinilai"
+                                      }
+                                    </span>
+                                  `
+                              }
+                            </td>
+
+                            <td>
+                              ${
+                                isEditable
+                                  ? `
+                                    <textarea
+                                      data-notes
+                                      rows="2"
+                                      aria-label="Catatan ${escapeHtml(item.name || "")}"
+                                      placeholder="Catatan temuan..."
+                                    >${escapeHtml(answer?.notes || "")}</textarea>
+                                  `
+                                  : `
+                                    <span>
+                                      ${escapeHtml(answer?.notes || "—")}
+                                    </span>
+                                  `
+                              }
+                            </td>
                           </tr>
                         `;
                       })
                       .join("")
                   : `
                     <tr>
-                      <td colspan="2" class="${empty}">
+                      <td colspan="3" class="${empty}">
                         Tidak ada item checklist.
                       </td>
                     </tr>
@@ -535,79 +666,146 @@ async function setupDailyChecklist(inspection) {
       </div>
     `;
 
-    saveButton.disabled = items.length === 0;
-    saveButton.textContent = "Simpan Tanggal Ini";
+    if (saveButton) {
+      saveButton.hidden = !isEditable;
+
+      saveButton.disabled =
+        !isEditable || definitions.length === 0;
+
+      saveButton.textContent = draftDays.size
+        ? `Simpan Semua Perubahan (${draftDays.size})`
+        : "Simpan Semua Perubahan";
+    }
+  }
+
+  // --------------------------------------------------
+  // TRACK LOCAL CHANGES
+  // --------------------------------------------------
+
+  if (isEditable) {
+    checklistContainer.addEventListener("change", (event) => {
+      if (!event.target.matches("[data-status]")) return;
+
+      markVisibleDateDirty();
+      renderDateList();
+      renderDayProgressOnly();
+    });
+
+    checklistContainer.addEventListener("input", (event) => {
+      if (!event.target.matches("[data-notes]")) return;
+
+      markVisibleDateDirty();
+      renderDateList();
+      renderDayProgressOnly();
+    });
+  }
+
+  function renderDayProgressOnly() {
+    const p = getProgress(dateInput.value);
+
+    progress.textContent =
+      `${p.completed} dari ${p.total} item dinilai untuk ` +
+      `${dateInput.value}.`;
+
+    if (saveButton) {
+      saveButton.textContent = draftDays.size
+        ? `Simpan Semua Perubahan (${draftDays.size})`
+        : "Simpan Semua Perubahan";
+    }
   }
 
   dateInput.addEventListener("change", () => {
     if (!dateInput.value) return;
+
+    captureVisibleDraft();
 
     renderDateList();
     renderDay();
   });
 
   // --------------------------------------------------
-  // SAVE CHECKLIST FOR SELECTED DATE
+  // SAVE ALL DRAFTS IN ONE API REQUEST
   // --------------------------------------------------
 
-  saveButton.addEventListener("click", async () => {
-    const selectedDate = dateInput.value;
+  async function saveAllDrafts() {
+    captureVisibleDraft();
+
+    const days = [...draftDays.values()].sort((a, b) =>
+      a.answer_date.localeCompare(b.answer_date),
+    );
+
+    if (days.length === 0) {
+      toast("Belum ada perubahan untuk disimpan.", "error");
+      return false;
+    }
 
     if (!isEditable) {
       toast(
-        "Pemeriksaan yang sudah dikirim tidak dapat diedit.",
+        "Hanya pemeriksaan berstatus OPEN yang dapat diedit.",
         "error",
       );
-      return;
+
+      return false;
     }
 
-    if (!selectedDate) {
-      toast(
-        "Pilih tanggal pemeriksaan terlebih dahulu.",
-        "error",
-      );
-      return;
+    // Validate all drafts before calling the backend.
+    for (const day of days) {
+      if (!day.answer_date.startsWith(`${monthKey}-`)) {
+        toast(
+          `Tanggal ${day.answer_date} berada di luar bulan pemeriksaan.`,
+          "error",
+        );
+
+        return false;
+      }
+
+      for (const item of day.items) {
+        if (
+          !Number.isInteger(item.checklist_item_id) ||
+          item.checklist_item_id <= 0
+        ) {
+          toast(
+            `Item checklist pada ${day.answer_date} tidak valid.`,
+            "error",
+          );
+
+          return false;
+        }
+
+        if (
+          item.status !== null &&
+          item.status !== "GOOD"
+        ) {
+          toast(
+            `Status checklist pada ${day.answer_date} tidak valid.`,
+            "error",
+          );
+
+          return false;
+        }
+      }
     }
 
-    const rows = [
-      ...checklistContainer.querySelectorAll("tr[data-item-id]"),
-    ];
-
-    const previousAnswers = new Map(
-      getAnswersForDate(selectedDate).map((answer) => [
-        Number(answer.checklist_item_id),
-        answer,
-      ]),
-    );
-
-    // Null answers are allowed.
-    const items = rows.map((row) => {
-      const itemID = Number(row.dataset.itemId);
-      const statusSelect = row.querySelector("[data-status]");
-      const previousAnswer = previousAnswers.get(itemID);
-
-      return {
-        checklist_item_id: itemID,
-        status: statusSelect?.value || null,
-        notes: previousAnswer?.notes || "",
-      };
-    });
-
-    saveButton.disabled = true;
-    saveButton.textContent = "Menyimpan...";
+    if (saveButton) {
+      saveButton.disabled = true;
+      saveButton.textContent = "Menyimpan semua perubahan...";
+    }
 
     try {
-      await api(`/edit-checklist/${inspection.id}`, {
-        method: "PUT",
-        body: {
-          answer_date: selectedDate,
-          items,
+      await api(
+        `/inspections/${inspection.id}/checklist/bulk`,
+        {
+          method: "PUT",
+          body: { days },
         },
-      });
+      );
 
-      const { data: refreshed } = await api(
+      const refreshedResponse = await api(
         `/inspections/${inspection.id}`,
       );
+
+      const refreshed =
+        refreshedResponse?.data ?? refreshedResponse;
 
       answers =
         Array.isArray(refreshed.checklist_detail) &&
@@ -617,26 +815,55 @@ async function setupDailyChecklist(inspection) {
             ? refreshed.checklist
             : [];
 
+      // Clear temporary drafts only after the save succeeded.
+      draftDays.clear();
+
       renderDateList();
       renderDay();
 
       toast(
-        `Pemeriksaan tanggal ${selectedDate} berhasil disimpan.`,
+        "Semua perubahan checklist berhasil disimpan.",
         "success",
       );
+
+      return true;
     } catch (error) {
+      // Keep the drafts if saving fails so the user can retry.
       toast(
-        error.message || "Gagal menyimpan pemeriksaan.",
+        error.message || "Gagal menyimpan semua perubahan.",
         "error",
       );
+
+      return false;
     } finally {
-      saveButton.disabled = false;
-      saveButton.textContent = "Simpan Tanggal Ini";
+      if (saveButton) {
+        saveButton.disabled = definitions.length === 0;
+
+        saveButton.textContent = draftDays.size
+          ? `Simpan Semua Perubahan (${draftDays.size})`
+          : "Simpan Semua Perubahan";
+      }
     }
-  });
+  }
+
+  if (saveButton && isEditable) {
+    saveButton.hidden = false;
+    saveButton.textContent = "Simpan Semua Perubahan";
+
+    saveButton.addEventListener("click", async () => {
+      await saveAllDrafts();
+    });
+  } else if (saveButton) {
+    saveButton.hidden = true;
+  }
 
   renderDateList();
   renderDay();
+
+  return {
+    saveAllDrafts,
+    hasPendingChanges: () => draftDays.size > 0,
+  };
 }
 
 // ==================================================
@@ -645,6 +872,7 @@ async function setupDailyChecklist(inspection) {
 
 async function main() {
   const user = await requireAuth();
+
   if (!user) return;
 
   await mountShell("latest.html", {
@@ -665,13 +893,11 @@ async function main() {
     showError(
       "Parameter ID pemeriksaan tidak valid atau tidak ditemukan.",
     );
+
     return;
   }
 
   const { data: insp } = await api(`/inspections/${id}`);
-
-  const isEditable =
-    String(insp.status || "").trim().toUpperCase() === "OPEN";
 
   const room = insp.room || {};
   const failed = insp.result === "FAILED";
@@ -685,7 +911,7 @@ async function main() {
     !!insp.inspector_signature &&
     !insp.kepala_ruangan_signature;
 
-  // Header actions.
+  // Header buttons.
   document.getElementById("header-actions").innerHTML = `
     <button
       type="button"
@@ -838,7 +1064,11 @@ async function main() {
 
       <div class="${sectionBody}">
         <p class="page-meta">
-          Pilih tanggal untuk melihat atau mengedit checklist.
+          ${
+            String(insp.status || "").toUpperCase() === "OPEN"
+              ? "Pilih tanggal, edit checklist, kemudian simpan semua perubahan."
+              : "Pemeriksaan ini hanya dapat dilihat karena statusnya bukan OPEN."
+          }
         </p>
 
         <input
@@ -863,82 +1093,22 @@ async function main() {
           type="button"
           class="${btn}"
           id="btn-save-day"
-          ${!isEditable ? "hidden" : ""}
         >
-          Simpan Tanggal Ini
+          Simpan Semua Perubahan
         </button>
       </div>
     </div>
 
-    <!-- CATATAN -->
     <div class="${section}" style="margin-top:12px">
       <div class="${sectionHeader}">
         Catatan
       </div>
 
       <div class="${sectionBody}">
-        <div id="notes-view">
-          <p id="notes-text">
-            ${escapeHtml(insp.notes || "—")}
-          </p>
-
-          ${
-            isEditable
-              ? `
-                <button
-                  type="button"
-                  class="${btnSecondary}"
-                  id="btn-edit-notes"
-                  style="margin-top:12px"
-                >
-                  Ubah Catatan
-                </button>
-              `
-              : ""
-          }
-        </div>
-
-        ${
-          isEditable
-            ? `
-              <div id="notes-editor" hidden>
-
-                <textarea
-                  id="inspection-notes"
-                  rows="4"
-                  class="${textarea}"
-                  placeholder="Tambahkan catatan pemeriksaan..."
-                  style="display:block; width:100%; margin-bottom:12px;"
-                >${escapeHtml(insp.notes || "")}</textarea>
-
-                <div
-                  class="flex gap-2"
-                  style="margin-top:12px; padding-bottom:12px;"
-                >
-                  <button
-                    type="button"
-                    class="${btn}"
-                    id="btn-save-notes"
-                  >
-                    Simpan Catatan
-                  </button>
-
-                  <button
-                    type="button"
-                    class="${btnSecondary}"
-                    id="btn-cancel-notes"
-                  >
-                    Batal
-                  </button>
-                </div>
-              </div>
-            `
-            : ""
-        }
+        ${escapeHtml(insp.notes || "—")}
       </div>
     </div>
 
-    <!-- SIGNATURES -->
     <div class="${section}" style="margin-top:12px">
       <div class="${sectionHeader}">
         Tanda Tangan
@@ -969,88 +1139,8 @@ async function main() {
     </div>
   `;
 
-  // Initialize the daily checklist.
+  // Initialize calendar and daily checklist.
   await setupDailyChecklist(insp);
-
-  // ==================================================
-  // EDIT INSPECTION NOTES (OPEN STATUS ONLY)
-  // ==================================================
-
-  if (isEditable) {
-    const notesView = document.getElementById("notes-view");
-    const notesText = document.getElementById("notes-text");
-    const notesEditor = document.getElementById("notes-editor");
-    const notesInput = document.getElementById("inspection-notes");
-
-    const editNotesButton =
-      document.getElementById("btn-edit-notes");
-
-    const saveNotesButton =
-      document.getElementById("btn-save-notes");
-
-    const cancelNotesButton =
-      document.getElementById("btn-cancel-notes");
-
-    editNotesButton?.addEventListener("click", () => {
-      notesInput.value = insp.notes || "";
-
-      notesView.hidden = true;
-      notesEditor.hidden = false;
-
-      notesInput.focus();
-    });
-
-    cancelNotesButton?.addEventListener("click", () => {
-      notesInput.value = insp.notes || "";
-
-      notesEditor.hidden = true;
-      notesView.hidden = false;
-    });
-
-    saveNotesButton?.addEventListener("click", async () => {
-      if (
-        String(insp.status || "").trim().toUpperCase() !== "OPEN"
-      ) {
-        toast(
-          "Catatan hanya dapat diubah saat status pemeriksaan OPEN.",
-          "error",
-        );
-        return;
-      }
-
-      saveNotesButton.disabled = true;
-      saveNotesButton.textContent = "Menyimpan...";
-
-      try {
-        const updatedNotes = notesInput.value;
-
-        await api(`/inspections/${insp.id}`, {
-          method: "PATCH",
-          body: {
-            notes: updatedNotes,
-          },
-        });
-
-        insp.notes = updatedNotes;
-
-        notesText.textContent =
-          updatedNotes.trim() || "—";
-
-        notesEditor.hidden = true;
-        notesView.hidden = false;
-
-        toast("Catatan berhasil disimpan.", "success");
-      } catch (error) {
-        toast(
-          error.message || "Gagal menyimpan catatan.",
-          "error",
-        );
-      } finally {
-        saveNotesButton.disabled = false;
-        saveNotesButton.textContent = "Simpan Catatan";
-      }
-    });
-  }
 
   // ==================================================
   // KEPALA RUANGAN SIGNATURE MODAL
@@ -1073,10 +1163,7 @@ async function main() {
           >
             <div class="kepala-sign-modal-header">
               <div>
-                <h2
-                  id="kepala-sign-title"
-                  class="text-lg font-semibold text-gray-900"
-                >
+                <h2 id="kepala-sign-title">
                   Tanda Tangan Kepala Ruangan
                 </h2>
 
@@ -1121,23 +1208,12 @@ async function main() {
       `,
     );
 
-    const modal =
-      document.getElementById("kepala-sign-modal");
-
-    const openBtn =
-      document.getElementById("btn-sign-kepala");
-
-    const closeBtn =
-      document.getElementById("btn-close-kepala-sign");
-
-    const cancelBtn =
-      document.getElementById("btn-cancel-kepala-sign");
-
-    const saveBtn =
-      document.getElementById("btn-save-kepala-sign");
-
-    const signatureRoot =
-      document.getElementById("kepala-signature-root");
+    const modal = document.getElementById("kepala-sign-modal");
+    const openBtn = document.getElementById("btn-sign-kepala");
+    const closeBtn = document.getElementById("btn-close-kepala-sign");
+    const cancelBtn = document.getElementById("btn-cancel-kepala-sign");
+    const saveBtn = document.getElementById("btn-save-kepala-sign");
+    const signatureRoot = document.getElementById("kepala-signature-root");
 
     const kepalaSigPad = new SignaturePad(signatureRoot);
 
@@ -1153,20 +1229,9 @@ async function main() {
       kepalaSigPad.clear();
     }
 
-    openBtn?.addEventListener(
-      "click",
-      openKepalaSignModal,
-    );
-
-    closeBtn?.addEventListener(
-      "click",
-      closeKepalaSignModal,
-    );
-
-    cancelBtn?.addEventListener(
-      "click",
-      closeKepalaSignModal,
-    );
+    openBtn?.addEventListener("click", openKepalaSignModal);
+    closeBtn?.addEventListener("click", closeKepalaSignModal);
+    cancelBtn?.addEventListener("click", closeKepalaSignModal);
 
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
