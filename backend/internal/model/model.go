@@ -74,9 +74,24 @@ type Inspection struct {
 	Notes           string            `json:"notes"`
 	Status          string            `json:"status"`
 	Checklist       []ChecklistAnswer `json:"checklist"`
-	Signatures      []Signature       `json:"signatures,omitempty"`
+	Signatures      []Signature       `json:"signatures"`
 	Room            *Room             `json:"room,omitempty"`
 	InspectorName   string            `json:"inspector_name,omitempty"`
 	CreatedAt       time.Time         `json:"created_at"`
 	UpdatedAt       time.Time         `json:"updated_at"`
+}
+
+type SaveInspectionDateInput struct {
+	AnswerDate string                   `json:"answer_date" binding:"required"`
+	Items      []SaveInspectionDateItem `json:"items" binding:"required,min=1,dive"`
+}
+
+type SaveInspectionDateItem struct {
+	ChecklistItemID int64   `json:"checklist_item_id" binding:"required,gt=0"`
+	Status          *string `json:"status"`
+}
+
+// Used to update the one general catatan on a monthly inspection.
+type UpdateInspectionNotesInput struct {
+	Notes string `json:"notes"`
 }

@@ -79,6 +79,8 @@ func main() {
 		authed.POST("/checklist-items", h.CreateChecklist)
 		authed.GET("/rooms", h.ListRooms)
 		authed.PUT("/edit-checklist/:id", h.ReplaceChecklistForDate)
+		authed.PUT("/inspections/:id/checklist/date", h.SaveInspectionDate)
+		authed.PUT("inspections/:id/notes", h.UpdateInspectionNotes)
 	}
 
 	addr := ":" + cfg.Port

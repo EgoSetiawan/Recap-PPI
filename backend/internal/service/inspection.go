@@ -3,6 +3,7 @@ package service
 import (
 	// "mime/multipart"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -21,10 +22,34 @@ const (
 	StatusRejected  = "REJECTED"
 )
 
+type SignaturePayload struct {
+	ImageDataURL string `json:"image_data_url" binding:"required"`
+}
+
+type ChecklistItemInput struct {
+	ChecklistItemID int64   `json:"checklist_item_id" binding:"required,gt=0"`
+	Status          *string `json:"status"`
+}
+
+type SaveInspectionDateInput struct {
+	AnswerDate string               `json:"answer_date" binding:"required"`
+	Items      []ChecklistItemInput `json:"items" binding:"required,min=1"`
+}
+
 type CreateInspectionInput struct {
-	RoomID          int64     `json:"room_id"`
-	InspectionMonth time.Time `json:"inspection_month"`
-	Notes           string    `json:"notes"`
+	RoomID          int64                     `json:"room_id" binding:"required,gt=0"`
+	InspectionMonth time.Time                 `json:"inspection_month" binding:"required"`
+	Notes           string                    `json:"notes"`
+	Days            []SaveInspectionDateInput `json:"days" binding:"required,min=1"`
+}
+
+type SubmitInspectionInput struct {
+	// Notes     string            `json:"notes"`
+	Signature *SignaturePayload `json:"signature" binding:"required"`
+}
+
+type ApproveInspectionInput struct {
+	Signature *SignaturePayload `json:"signature" binding:"required"`
 }
 
 type SaveChecklistInput struct {
@@ -32,13 +57,118 @@ type SaveChecklistInput struct {
 	Items      []model.ChecklistAnswer `json:"items"`
 }
 
-type ApproveInspectionInput struct {
-	Signature string `json:"signature"`
-}
-
 func validSignatureImage(url string) bool {
 	u := strings.TrimSpace(url)
 	return strings.HasPrefix(u, "data:image") && len(u) > 80
+}
+
+func findSignatureByRole(signatures []model.Signature, role string) *model.Signature {
+	for i := range signatures {
+		if signatures[i].Role == role {
+			return &signatures[i]
+		}
+	}
+
+	return nil
+}
+
+func buildInspectionChecklist(days []SaveInspectionDateInput, month time.Time) ([]model.ChecklistAnswer, error) {
+	if len(days) == 0 {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Minimal satu tanggal pemeriksaan wajib diisi",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	checklist := make([]model.ChecklistAnswer, 0)
+	seenDates := make(map[string]bool)
+
+	for _, day := range days {
+		dateText := strings.TrimSpace(day.AnswerDate)
+
+		answerDate, err := time.Parse("2006-01-02", dateText)
+		if err != nil {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Format answer_date harus YYYY-MM-DD: "+dateText,
+				http.StatusUnprocessableEntity,
+			)
+		}
+
+		if answerDate.Year() != month.Year() ||
+			answerDate.Month() != month.Month() {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Tanggal checklist harus berada dalam bulan pemeriksaan",
+				http.StatusUnprocessableEntity,
+			)
+		}
+
+		dateKey := answerDate.Format("2006-01-02")
+		if seenDates[dateKey] {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Tanggal checklist duplikat: "+dateKey,
+				http.StatusUnprocessableEntity,
+			)
+		}
+		seenDates[dateKey] = true
+
+		if len(day.Items) == 0 {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Setiap tanggal harus memiliki minimal satu item checklist",
+				http.StatusUnprocessableEntity,
+			)
+		}
+
+		seenItems := make(map[int64]bool)
+
+		for _, item := range day.Items {
+			if item.ChecklistItemID <= 0 {
+				return nil, response.Err(
+					"VALIDATION_ERROR",
+					"Checklist item ID tidak valid",
+					http.StatusUnprocessableEntity,
+				)
+			}
+
+			if seenItems[item.ChecklistItemID] {
+				return nil, response.Err(
+					"VALIDATION_ERROR",
+					"Checklist item duplikat pada tanggal "+dateKey,
+					http.StatusUnprocessableEntity,
+				)
+			}
+			seenItems[item.ChecklistItemID] = true
+
+			var status *string
+
+			if item.Status != nil {
+				value := strings.TrimSpace(*item.Status)
+
+				if value != "GOOD" {
+					return nil, response.Err(
+						"VALIDATION_ERROR",
+						"Status checklist hanya boleh GOOD atau null",
+						http.StatusUnprocessableEntity,
+					)
+				}
+
+				status = &value
+			}
+
+			checklist = append(checklist, model.ChecklistAnswer{
+				ChecklistItemID: item.ChecklistItemID,
+				AnswerDate:      answerDate,
+				Status:          status,
+				Notes:           "",
+			})
+		}
+	}
+
+	return checklist, nil
 }
 
 // func (s *Service) kepalaSig(actor *model.User, in *model.Signature) *model.Signature {
@@ -69,7 +199,7 @@ func validSignatureImage(url string) bool {
 // 	return &sig
 // }
 
-func (s *Service) kepalaSig(actor *model.User, imageDataURL string) *model.Signature {
+func (s *Service) kepalaSig(actor *model.User, imageDataURL string, id int64, in *model.Signature) *model.Signature {
 	if actor == nil || !auth.IsKepala(actor.Role) {
 		return nil
 	}
@@ -81,6 +211,11 @@ func (s *Service) kepalaSig(actor *model.User, imageDataURL string) *model.Signa
 	title := actor.Title
 	if title == "" {
 		title = auth.DefaultTitle(actor.Role)
+	}
+	_, err := s.getInspectionForActor(actor, id)
+
+	if err != nil {
+		return nil
 	}
 	return &model.Signature{
 		SignerUserID: &uid,
@@ -102,15 +237,7 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		)
 	}
 
-	if !auth.IsAnggota(actor.Role) {
-		return nil, response.Err(
-			"FORBIDDEN",
-			"Hanya Anggota yang dapat membuat pemeriksaan",
-			http.StatusForbidden,
-		)
-	}
-
-	if in.RoomID == 0 {
+	if in.RoomID <= 0 {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
 			"Room ID wajib diisi",
@@ -151,20 +278,25 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		time.UTC,
 	)
 
+	// Convert all dates and items from the request into checklist answers.
+	checklist, err := buildInspectionChecklist(in.Days, month)
+	if err != nil {
+		return nil, err
+	}
+
 	ins := &model.Inspection{
 		RoomID:          room.ID,
 		InspectorID:     actor.ID,
 		InspectionMonth: month,
-		Notes:           in.Notes,
+		Notes:           strings.TrimSpace(in.Notes),
 		Status:          StatusOpen,
-		Checklist:       []model.ChecklistAnswer{},
+		Checklist:       checklist,
 		Signatures:      []model.Signature{},
 	}
-
+	// Create the monthly inspection once.
 	if err := s.Repo.CreateInspectionFull(ins); err != nil {
 		return nil, err
 	}
-
 	return s.Repo.GetInspection(ins.ID)
 }
 
@@ -388,5 +520,178 @@ func (s *Service) ReplaceChecklistForDate(inspectionID int64, answerDate time.Ti
 		inspectionID,
 		answerDate,
 		items,
+	)
+}
+
+func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in model.SaveInspectionDateInput) error {
+	if actor == nil {
+		return response.Err(
+			"UNAUTHENTICATED",
+			"User tidak ditemukan",
+			http.StatusUnauthorized,
+		)
+	}
+
+	if !auth.IsAnggota(actor.Role) {
+		return response.Err(
+			"FORBIDDEN",
+			"Hanya Anggota yang dapat mengubah checklist",
+			http.StatusForbidden,
+		)
+	}
+
+	if inspectionID <= 0 {
+		return response.Err(
+			"VALIDATION_ERROR",
+			"ID pemeriksaan tidak valid",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	// Parse a calendar date, not an arbitrary timestamp.
+	answerDate, err := time.Parse("2006-01-02", strings.TrimSpace(in.AnswerDate))
+	if err != nil {
+		return response.Err(
+			"VALIDATION_ERROR",
+			"answer_date harus berformat YYYY-MM-DD",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	inspection, err := s.Repo.GetInspection(inspectionID)
+	if err != nil {
+		return err
+	}
+	if inspection == nil {
+		return response.Err(
+			"NOT_FOUND",
+			"Pemeriksaan tidak ditemukan",
+			http.StatusNotFound,
+		)
+	}
+
+	if strings.ToUpper(strings.TrimSpace(inspection.Status)) != "OPEN" {
+		return response.Err(
+			"INSPECTION_LOCKED",
+			"Checklist hanya dapat diubah saat pemeriksaan berstatus OPEN",
+			http.StatusConflict,
+		)
+	}
+
+	// Only allow a date within this monthly inspection.
+	if answerDate.Year() != inspection.InspectionMonth.Year() ||
+		answerDate.Month() != inspection.InspectionMonth.Month() {
+		return response.Err(
+			"VALIDATION_ERROR",
+			"Tanggal harus berada dalam bulan pemeriksaan",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	if err := assertRoomAccess(actor, inspection.RoomID); err != nil {
+		return err
+	}
+
+	answers := make([]model.ChecklistAnswer, 0, len(in.Items))
+	seen := make(map[int64]struct{}, len(in.Items))
+
+	for _, item := range in.Items {
+		if item.ChecklistItemID <= 0 {
+			return response.Err(
+				"VALIDATION_ERROR",
+				"Checklist item ID tidak valid",
+				http.StatusUnprocessableEntity,
+			)
+		}
+
+		if _, exists := seen[item.ChecklistItemID]; exists {
+			return response.Err(
+				"VALIDATION_ERROR",
+				fmt.Sprintf("Checklist item %d duplikat", item.ChecklistItemID),
+				http.StatusUnprocessableEntity,
+			)
+		}
+		seen[item.ChecklistItemID] = struct{}{}
+
+		var status *string
+		if item.Status != nil {
+			value := strings.ToUpper(strings.TrimSpace(*item.Status))
+			switch value {
+			case "":
+				status = nil
+			case "GOOD":
+				good := "GOOD"
+				status = &good
+			default:
+				return response.Err(
+					"VALIDATION_ERROR",
+					"Status checklist hanya boleh GOOD atau null",
+					http.StatusUnprocessableEntity,
+				)
+			}
+		}
+
+		answers = append(answers, model.ChecklistAnswer{
+			ChecklistItemID: item.ChecklistItemID,
+			AnswerDate:      answerDate,
+			Status:          status,
+			Notes:           "",
+		})
+	}
+
+	// This repository method replaces answers for this date only.
+	// It must not update inspections.notes.
+	return s.Repo.ReplaceChecklistForDate(
+		inspectionID,
+		answerDate,
+		answers,
+	)
+}
+
+func (s *Service) UpdateInspectionNotes(actor *model.User, inspectionID int64, notes string) error {
+	if actor == nil {
+		return response.Err(
+			"UNAUTHENTICATED",
+			"User tidak ditemukan",
+			http.StatusUnauthorized,
+		)
+	}
+
+	if inspectionID <= 0 {
+		return response.Err(
+			"VALIDATION_ERROR",
+			"ID pemeriksaan tidak valid",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	inspection, err := s.Repo.GetInspection(inspectionID)
+	if err != nil {
+		return err
+	}
+	if inspection == nil {
+		return response.Err(
+			"NOT_FOUND",
+			"Pemeriksaan tidak ditemukan",
+			http.StatusNotFound,
+		)
+	}
+
+	if strings.ToUpper(strings.TrimSpace(inspection.Status)) != "OPEN" {
+		return response.Err(
+			"INSPECTION_LOCKED",
+			"Catatan hanya dapat diubah saat pemeriksaan berstatus OPEN",
+			http.StatusConflict,
+		)
+	}
+
+	if err := assertRoomAccess(actor, inspection.RoomID); err != nil {
+		return err
+	}
+
+	// Update only the general monthly catatan.
+	return s.Repo.UpdateInspectionNotes(
+		inspectionID,
+		strings.TrimSpace(notes),
 	)
 }

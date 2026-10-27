@@ -2,12 +2,23 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"PPI/internal/model"
 )
+
+func findSignature(signatures []model.Signature, role string) *model.Signature {
+	for i := range signatures {
+		if signatures[i].Role == role {
+			return &signatures[i]
+		}
+	}
+
+	return nil
+}
 
 const inspectionSelect = `
 SELECT i.id, i.room_id, i.inspector_id, i.inspection_month, i.notes, i.status, i.created_at, i.updated_at
@@ -161,10 +172,10 @@ func (r *Repo) CreateInspectionFull(ins *model.Inspection) error {
 	defer tx.Rollback()
 
 	if ins.Status == "" {
-		ins.Status = "SUBMITTED"
+		ins.Status = "OPEN"
 	}
 
-	inspectionMonth := time.Date(
+	month := time.Date(
 		ins.InspectionMonth.Year(),
 		ins.InspectionMonth.Month(),
 		1,
@@ -173,19 +184,65 @@ func (r *Repo) CreateInspectionFull(ins *model.Inspection) error {
 	)
 
 	err = tx.QueryRow(
-		`INSERT INTO inspections ( room_id, inspector_id, inspection_month, notes, status)
+		`INSERT INTO inspections (
+			room_id,
+			inspector_id,
+			inspection_month,
+			notes,
+			status
+		)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at, updated_at`,
-		ins.RoomID, ins.InspectorID, inspectionMonth, ins.Notes, ins.Status).Scan(
-		&ins.ID, &ins.CreatedAt, &ins.UpdatedAt)
-
+		ins.RoomID,
+		ins.InspectorID,
+		month,
+		ins.Notes,
+		ins.Status,
+	).Scan(&ins.ID, &ins.CreatedAt, &ins.UpdatedAt)
 	if err != nil {
 		return err
 	}
 
+	// Saves answers for all selected dates.
 	if err := replaceChecklist(tx, ins.ID, ins.Checklist); err != nil {
 		return err
 	}
+
+	sig := findSignature(ins.Signatures, "ANGGOTA")
+
+	// A submitted inspection must have an Anggota signature.
+	if ins.Status == "SUBMITTED" &&
+		(sig == nil || strings.TrimSpace(sig.ImageDataURL) == "") {
+		return errors.New("Anggota signature is required before submission")
+	}
+
+	// A signature provided during creation must belong to the Anggota.
+	if sig != nil && strings.TrimSpace(sig.ImageDataURL) != "" {
+		if sig.Role != "ANGGOTA" {
+			return errors.New("invalid signature role for inspection creation")
+		}
+		//Check Signer ID
+		if sig.SignerUserID == nil ||
+			*sig.SignerUserID != ins.InspectorID {
+			return errors.New(
+				"signer does not match the assigned Anggota",
+			)
+		}
+
+		sig.InspectionID = ins.ID
+
+		if sig.Method == "" {
+			sig.Method = "draw"
+		}
+		if sig.SignedAt.IsZero() {
+			sig.SignedAt = time.Now().UTC()
+		}
+
+		if err := upsertSignatureTx(tx, sig); err != nil {
+			return err
+		}
+	}
+
 	return tx.Commit()
 }
 
@@ -355,42 +412,117 @@ func scanInspection(row interface{ Scan(dest ...any) error }) (*model.Inspection
 }
 
 func (r *Repo) ReplaceChecklistForDate(inspectionID int64, answerDate time.Time, items []model.ChecklistAnswer) error {
+
+	if inspectionID <= 0 {
+		return errors.New("invalid inspection ID")
+	}
+	if len(items) == 0 {
+		return errors.New("no checklist items supplied")
+	}
+
+	answerDate = time.Date(
+		answerDate.Year(),
+		answerDate.Month(),
+		answerDate.Day(),
+		0, 0, 0, 0,
+		time.UTC,
+	)
+
 	tx, err := r.DB.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	_, err = tx.Exec(`
-		DELETE FROM inspection_checklist_items
-		WHERE inspection_id = $1
-		  AND answer_date = $2
-	`, inspectionID, answerDate)
+
+	var status string
+	var inspectionMonth time.Time
+
+	err = tx.QueryRow(
+		`SELECT status, inspection_month
+		   FROM inspections
+		  WHERE id = $1
+		  FOR UPDATE`,
+		inspectionID,
+	).Scan(&status, &inspectionMonth)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("inspection not found")
+		}
+		return err
+	}
+
+	if strings.ToUpper(strings.TrimSpace(status)) != "OPEN" {
+		return errors.New("checklist can only be edited while inspection is OPEN")
+	}
+
+	if answerDate.Year() != inspectionMonth.Year() ||
+		answerDate.Month() != inspectionMonth.Month() {
+		return errors.New("answer date is outside the inspection month")
+	}
+
+	seen := make(map[int64]struct{}, len(items))
+	for _, item := range items {
+		if item.ChecklistItemID <= 0 {
+			return errors.New("invalid checklist item ID")
+		}
+		if _, exists := seen[item.ChecklistItemID]; exists {
+			return fmt.Errorf("duplicate checklist item ID: %d", item.ChecklistItemID)
+		}
+		seen[item.ChecklistItemID] = struct{}{}
+
+		if item.Status != nil {
+			value := strings.ToUpper(strings.TrimSpace(*item.Status))
+			if value != "" && value != "GOOD" {
+				return fmt.Errorf("invalid checklist status %q", value)
+			}
+		}
+	}
+
+	// Delete only the answers for this date. Other dates remain untouched.
+	_, err = tx.Exec(
+		`DELETE FROM inspection_checklist_items
+		  WHERE inspection_id = $1
+		    AND answer_date = $2`,
+		inspectionID,
+		answerDate,
+	)
 	if err != nil {
 		return err
 	}
 
 	for _, item := range items {
-		_, err := tx.Exec(`
-			INSERT INTO inspection_checklist_items (
-				inspection_id,
-				checklist_item_id,
-				answer_date,
-				status,
-				notes
-			)
-			VALUES ($1, $2, $3, $4, $5)
-		`,
+		var statusValue any
+		if item.Status != nil {
+			value := strings.ToUpper(strings.TrimSpace(*item.Status))
+			if value == "GOOD" {
+				statusValue = "GOOD"
+			}
+		}
+		// General monthly catatan is stored in inspections.notes.
+		// This workflow intentionally doesn't store a separate daily catatan.
+		_, err = tx.Exec(
+			`INSERT INTO inspection_checklist_items (
+			    inspection_id,
+			    checklist_item_id,
+			    answer_date,
+			    status,
+			    notes,
+			    created_at,
+			    updated_at
+			) VALUES ($1, $2, $3, $4, '', NOW(), NOW())`,
 			inspectionID,
 			item.ChecklistItemID,
 			answerDate,
-			item.Status,
-			item.Notes,
+			statusValue,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf(
+				"save checklist item %d: %w",
+				item.ChecklistItemID,
+				err,
+			)
 		}
 	}
-
 	return tx.Commit()
 }
 
@@ -427,4 +559,29 @@ func upsertSignatureTx(tx *sql.Tx, sig *model.Signature) error {
 		sig.InspectionID, nullInt64(sig.SignerUserID), sig.Role, sig.Method, sig.SignerName, sig.SignerTitle, sig.ImageDataURL, sig.SignedAt,
 	).Scan(&sig.ID)
 	return err
+}
+
+func (r *Repo) UpdateInspectionNotes(inspectionID int64, notes string) error {
+	result, err := r.DB.Exec(
+		`UPDATE inspections
+		 SET notes = $1,
+		     updated_at = NOW()
+		 WHERE id = $2
+		   AND status = 'OPEN'`,
+		strings.TrimSpace(notes),
+		inspectionID,
+	)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errors.New("inspection not found or is not OPEN")
+	}
+
+	return nil
 }

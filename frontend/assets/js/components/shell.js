@@ -50,7 +50,7 @@ const NAV_SECTIONS = [
       {
         href: "inspection.html",
         label: "Pemeriksaan",
-        roles: ["ANGGOTA"],
+        roles: ["ANGGOTA, KEPALA"],
       },
     ],
   },

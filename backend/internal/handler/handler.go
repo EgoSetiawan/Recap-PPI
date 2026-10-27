@@ -316,3 +316,79 @@ func (h *Handler) ReplaceChecklistForDate(c *gin.Context) {
 		"Checklist answers updated",
 	)
 }
+
+func (h *Handler) UpdateInspectionNotes(c *gin.Context) {
+	id, err := parseID(c, "id")
+	if err != nil || id <= 0 {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"Invalid inspection ID",
+			http.StatusUnprocessableEntity,
+		)
+		return
+	}
+
+	var in model.UpdateInspectionNotesInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.FailCode(
+			c,
+			"INVALID_JSON",
+			"Invalid notes payload",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if err := h.Svc.UpdateInspectionNotes(
+		middleware.CurrentUser(c),
+		id,
+		in.Notes,
+	); err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.OK(c, gin.H{
+		"inspection_id": id,
+		"notes":         in.Notes,
+	}, "Catatan pemeriksaan berhasil diperbarui")
+}
+
+func (h *Handler) SaveInspectionDate(c *gin.Context) {
+	id, err := parseID(c, "id")
+	if err != nil || id <= 0 {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"Invalid inspection ID",
+			http.StatusUnprocessableEntity,
+		)
+		return
+	}
+
+	var in model.SaveInspectionDateInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.FailCode(
+			c,
+			"INVALID_JSON",
+			"Invalid checklist payload",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if err := h.Svc.SaveInspectionDate(
+		middleware.CurrentUser(c),
+		id,
+		in,
+	); err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.OK(c, gin.H{
+		"inspection_id": id,
+		"answer_date":   in.AnswerDate,
+	}, "Checklist tanggal berhasil disimpan")
+}
