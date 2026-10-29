@@ -41,6 +41,8 @@ type CreateInspectionInput struct {
 	InspectionMonth time.Time                 `json:"inspection_month" binding:"required"`
 	Notes           string                    `json:"notes"`
 	Days            []SaveInspectionDateInput `json:"days" binding:"required,min=1"`
+	// optional
+	Signature *SignaturePayload `json:"signature" binding:"required"`
 }
 
 type SubmitInspectionInput struct {
@@ -218,6 +220,73 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 	}, nil
 }
 
+func (s *Service) AddAnggotaSignature(actor *model.User, imageDataURL string, id int64) (*model.Signature, error) {
+	if actor == nil {
+		return nil, response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
+	// Check that the inspection exists and the actor can access it.
+	ins, err := s.getInspectionForActor(actor, id)
+	if err != nil {
+		return nil, err
+	}
+	if ins == nil {
+		return nil, response.Err(
+			"NOT_FOUND",
+			"Pemeriksaan tidak ditemukan",
+			http.StatusNotFound,
+		)
+	}
+	// Only the assigned inspector may sign as Anggota.
+	if ins.InspectorID != actor.ID {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya petugas pemeriksa yang ditugaskan dapat menandatangani",
+			http.StatusForbidden,
+		)
+	}
+	// Only an editable draft can receive or update this signature.
+	if ins.Status != StatusOpen {
+		return nil, response.Err(
+			"INVALID_STATUS",
+			"Tanda tangan hanya dapat disimpan pada draft pemeriksaan",
+			http.StatusConflict,
+		)
+	}
+	imageDataURL = strings.TrimSpace(imageDataURL)
+	if !validSignatureImage(imageDataURL) {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Tanda tangan tidak valid atau kosong",
+			http.StatusUnprocessableEntity,
+		)
+	}
+	uid := actor.ID
+	title := strings.TrimSpace(actor.Title)
+	if title == "" {
+		title = auth.DefaultTitle(actor.Role)
+	}
+	sig := &model.Signature{
+		InspectionID: id,
+		SignerUserID: &uid,
+		Role:         "ANGGOTA",
+		Method:       "draw",
+		SignerName:   actor.Name,
+		SignerTitle:  title,
+		ImageDataURL: imageDataURL,
+		SignedAt:     time.Now().UTC(),
+	}
+	// Insert or update the Anggota signature.
+	if err := s.Repo.UpsertSignature(sig); err != nil {
+		return nil, err
+	}
+
+	return sig, nil
+}
+
 func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) (*model.Inspection, error) {
 	if actor == nil {
 		return nil, response.Err(
@@ -274,6 +343,36 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		return nil, err
 	}
 
+	//added for optional
+	signatures := []model.Signature{}
+
+	if in.Signature != nil {
+		imageDataURL := strings.TrimSpace(in.Signature.ImageDataURL)
+
+		if !validSignatureImage(imageDataURL) {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Tanda tangan tidak valid",
+				http.StatusUnprocessableEntity,
+			)
+		}
+		uid := actor.ID
+		title := strings.TrimSpace(actor.Title)
+		if title == "" {
+			title = auth.DefaultTitle(actor.Role)
+		}
+
+		signatures = append(signatures, model.Signature{
+			SignerUserID: &uid,
+			Role:         "ANGGOTA",
+			Method:       "draw",
+			SignerName:   actor.Name,
+			SignerTitle:  title,
+			ImageDataURL: imageDataURL,
+			SignedAt:     time.Now().UTC(),
+		})
+	}
+
 	ins := &model.Inspection{
 		RoomID:          room.ID,
 		InspectorID:     actor.ID,
@@ -281,7 +380,7 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		Notes:           strings.TrimSpace(in.Notes),
 		Status:          StatusOpen,
 		Checklist:       checklist,
-		Signatures:      []model.Signature{},
+		Signatures:      signatures,
 	}
 	// Create the monthly inspection once.
 	if err := s.Repo.CreateInspectionFull(ins); err != nil {

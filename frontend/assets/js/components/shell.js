@@ -34,12 +34,12 @@ const NAV_SECTIONS = [
       {
         href: "rooms.html",
         label: "Ruangan",
-        roles: ["SUPER_ADMIN"],
+        roles: ["SUPER_ADMIN", "KEPALA"],
       },
       {
         href: "checklist.html",
         label: "Item Pemeriksaan",
-        roles: ["SUPER_ADMIN"],
+        roles: ["SUPER_ADMIN", "KEPALA"],
       },
     ],
   },
@@ -59,13 +59,8 @@ const NAV_SECTIONS = [
     title: "Review",
     items: [
       {
-        href: "latest.html",
-        label: "Pemeriksaan Terbaru",
-        roles: ["KEPALA"],
-      },
-      {
         href: "open-inspection.html",
-        label: "Pemeriksaan",
+        label: "Draft Pemeriksaan",
         roles: ["SUPER_ADMIN", "KEPALA", "ANGGOTA"],
       },
       {

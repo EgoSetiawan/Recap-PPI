@@ -773,14 +773,14 @@ async function main() {
 
   if (!user) return;
 
-  await mountShell("latest.html", {
+  await mountShell("open-inspection.html", {
     breadcrumb: `
-      <a href="latest.html">Pemeriksaan</a>
+      <a href="open-inspection.html">Pemeriksaan</a>
       <span>/</span>
       Detail
     `,
     mobileBack: {
-      href: "latest.html",
+      href: "open-inspection.html",
       label: "Kembali",
     },
   });

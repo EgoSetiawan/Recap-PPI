@@ -615,3 +615,7 @@ func (r *Repo) UpdateInspectionNotes(inspectionID int64, notes string) error {
 
 	return nil
 }
+
+func (r *Repo) SubmitInspection(actor *model.User, sign *model.Signature) {
+
+}
