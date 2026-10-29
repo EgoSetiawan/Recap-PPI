@@ -80,7 +80,8 @@ func main() {
 		authed.GET("/rooms", h.ListRooms)
 		authed.PUT("/edit-checklist/:id", h.ReplaceChecklistForDate)
 		authed.PUT("/inspections/:id/checklist/date", h.SaveInspectionDate)
-		authed.PUT("inspections/:id/notes", h.UpdateInspectionNotes)
+		authed.PUT("/inspections/:id/notes", h.UpdateInspectionNotes)
+		authed.POST("/inspections/:id/signature/kepala-ruangan", h.AddKepalaSign)
 	}
 
 	addr := ":" + cfg.Port

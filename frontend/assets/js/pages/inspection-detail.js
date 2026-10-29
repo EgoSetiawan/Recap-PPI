@@ -1,18 +1,8 @@
-import {
-  requireAuth,
-  api,
-  hasPermission,
-  downloadInspectionPdf,
-} from "../api.js";
+import { requireAuth, api, hasPermission, downloadInspectionPdf } from "../api.js";
 
 import { mountShell, toast } from "../components/shell.js";
 
-import {
-  qs,
-  escapeHtml,
-  formatDate,
-  statusBadge,
-} from "../utils/format.js";
+import { qs, escapeHtml, formatDate, statusBadge } from "../utils/format.js";
 
 import {
   btn,
@@ -41,8 +31,7 @@ function sigBlock(title, sig) {
   }
 
   const src =
-    typeof sig.image_data_url === "string" &&
-    sig.image_data_url.length > 80
+    typeof sig.image_data_url === "string" && sig.image_data_url.length > 80
       ? sig.image_data_url
       : "";
 
@@ -115,7 +104,9 @@ async function setupDailyChecklist(inspection) {
   const saveButton = document.getElementById("btn-save-day");
 
   const isEditable =
-    String(inspection.status || "").trim().toUpperCase() === "OPEN";
+    String(inspection.status || "")
+      .trim()
+      .toUpperCase() === "OPEN";
 
   if (!dateInput || !dateList || !checklistContainer || !progress) {
     throw new Error("Elemen pemeriksaan harian tidak ditemukan.");
@@ -125,9 +116,7 @@ async function setupDailyChecklist(inspection) {
     throw new Error("Tombol simpan perubahan tidak ditemukan.");
   }
 
-  const monthKey = String(
-    inspection.inspection_month || "",
-  ).slice(0, 7);
+  const monthKey = String(inspection.inspection_month || "").slice(0, 7);
 
   if (!/^\d{4}-\d{2}$/.test(monthKey)) {
     throw new Error("Bulan pemeriksaan tidak valid.");
@@ -135,13 +124,10 @@ async function setupDailyChecklist(inspection) {
 
   const [year, month] = monthKey.split("-").map(Number);
 
-  const lastDay = new Date(
-    Date.UTC(year, month, 0),
-  ).getUTCDate();
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
 
   dateInput.min = `${monthKey}-01`;
-  dateInput.max =
-    `${monthKey}-${String(lastDay).padStart(2, "0")}`;
+  dateInput.max = `${monthKey}-${String(lastDay).padStart(2, "0")}`;
 
   // Load checklist definitions.
   const { data: definitionData } = await api("/checklist-items", {
@@ -150,14 +136,11 @@ async function setupDailyChecklist(inspection) {
     },
   });
 
-  const definitions = Array.isArray(definitionData)
-    ? definitionData
-    : [];
+  const definitions = Array.isArray(definitionData) ? definitionData : [];
 
   // Existing checklist answers.
   let answers =
-    Array.isArray(inspection.checklist_detail) &&
-    inspection.checklist_detail.length
+    Array.isArray(inspection.checklist_detail) && inspection.checklist_detail.length
       ? inspection.checklist_detail
       : Array.isArray(inspection.checklist)
         ? inspection.checklist
@@ -184,18 +167,13 @@ async function setupDailyChecklist(inspection) {
    */
   const draftDays = new Map();
 
-  const getAnswerDate = (answer) =>
-    String(answer.answer_date || "").slice(0, 10);
+  const getAnswerDate = (answer) => String(answer.answer_date || "").slice(0, 10);
 
   const savedDates = [
     ...new Set(
       answers
         .map(getAnswerDate)
-        .filter(
-          (date) =>
-            /^\d{4}-\d{2}-\d{2}$/.test(date) &&
-            date.startsWith(`${monthKey}-`),
-        ),
+        .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && date.startsWith(`${monthKey}-`)),
     ),
   ].sort();
 
@@ -212,16 +190,12 @@ async function setupDailyChecklist(inspection) {
       }));
     }
 
-    return answers.filter(
-      (answer) => getAnswerDate(answer) === date,
-    );
+    return answers.filter((answer) => getAnswerDate(answer) === date);
   }
 
   function hasMeaningfulData(date) {
     return getAnswersForDate(date).some(
-      (item) =>
-        Boolean(item.status) ||
-        String(item.notes || "").trim() !== "",
+      (item) => Boolean(item.status) || String(item.notes || "").trim() !== "",
     );
   }
 
@@ -274,15 +248,12 @@ async function setupDailyChecklist(inspection) {
 
     if (!date || !draftDays.has(date)) return;
 
-    const rows = [
-      ...checklistContainer.querySelectorAll("tr[data-item-id]"),
-    ];
+    const rows = [...checklistContainer.querySelectorAll("tr[data-item-id]")];
 
     const items = rows.map((row) => ({
       checklist_item_id: Number(row.dataset.itemId),
       status: row.querySelector("[data-status]")?.value || null,
-      notes:
-        row.querySelector("[data-notes]")?.value.trim() || "",
+      notes: row.querySelector("[data-notes]")?.value.trim() || "",
     }));
 
     draftDays.set(date, {
@@ -297,17 +268,14 @@ async function setupDailyChecklist(inspection) {
 
     const date = dateInput.value;
 
-    const rows = [
-      ...checklistContainer.querySelectorAll("tr[data-item-id]"),
-    ];
+    const rows = [...checklistContainer.querySelectorAll("tr[data-item-id]")];
 
     if (!rows.length) return;
 
     const items = rows.map((row) => ({
       checklist_item_id: Number(row.dataset.itemId),
       status: row.querySelector("[data-status]")?.value || null,
-      notes:
-        row.querySelector("[data-notes]")?.value.trim() || "",
+      notes: row.querySelector("[data-notes]")?.value.trim() || "",
     }));
 
     draftDays.set(date, {
@@ -321,37 +289,21 @@ async function setupDailyChecklist(inspection) {
   // --------------------------------------------------
 
   function renderDateList() {
-    const firstWeekday = new Date(
-      Date.UTC(year, month - 1, 1),
-    ).getUTCDay();
+    const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
 
     const monthTitle = new Intl.DateTimeFormat("id-ID", {
       month: "long",
       year: "numeric",
       timeZone: "UTC",
-    }).format(
-      new Date(Date.UTC(year, month - 1, 1)),
-    );
+    }).format(new Date(Date.UTC(year, month - 1, 1)));
 
-    const weekdays = [
-      "Min",
-      "Sen",
-      "Sel",
-      "Rab",
-      "Kam",
-      "Jum",
-      "Sab",
-    ];
+    const weekdays = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
-    const daysWithData = Array.from(
-      { length: lastDay },
-      (_, index) => {
-        const date =
-          `${monthKey}-${String(index + 1).padStart(2, "0")}`;
+    const daysWithData = Array.from({ length: lastDay }, (_, index) => {
+      const date = `${monthKey}-${String(index + 1).padStart(2, "0")}`;
 
-        return hasMeaningfulData(date) ? date : null;
-      },
-    ).filter(Boolean);
+      return hasMeaningfulData(date) ? date : null;
+    }).filter(Boolean);
 
     const pendingDates = [...draftDays.keys()].sort();
 
@@ -365,31 +317,27 @@ async function setupDailyChecklist(inspection) {
       `,
     ).join("");
 
-    const dayCells = Array.from(
-      { length: lastDay },
-      (_, index) => {
-        const day = index + 1;
+    const dayCells = Array.from({ length: lastDay }, (_, index) => {
+      const day = index + 1;
 
-        const date =
-          `${monthKey}-${String(day).padStart(2, "0")}`;
+      const date = `${monthKey}-${String(day).padStart(2, "0")}`;
 
-        const p = getProgress(date);
-        const selected = date === dateInput.value;
-        const dirty = draftDays.has(date);
-        const hasData = hasMeaningfulData(date);
+      const p = getProgress(date);
+      const selected = date === dateInput.value;
+      const dirty = draftDays.has(date);
+      const hasData = hasMeaningfulData(date);
 
-        const complete =
-          p.total > 0 && p.completed >= p.total;
+      const complete = p.total > 0 && p.completed >= p.total;
 
-        const stateText = dirty
-          ? "Belum disimpan"
-          : complete
-            ? "Lengkap"
-            : p.completed > 0
-              ? `${p.completed}/${p.total}`
-              : "—";
+      const stateText = dirty
+        ? "Belum disimpan"
+        : complete
+          ? "Lengkap"
+          : p.completed > 0
+            ? `${p.completed}/${p.total}`
+            : "—";
 
-        return `
+      return `
           <button
             type="button"
             class="inspection-calendar__day${selected ? " is-selected" : ""}${dirty ? " is-dirty" : ""}"
@@ -413,8 +361,7 @@ async function setupDailyChecklist(inspection) {
             </span>
           </button>
         `;
-      },
-    ).join("");
+    }).join("");
 
     dateList.innerHTML = `
       <section
@@ -505,24 +452,22 @@ async function setupDailyChecklist(inspection) {
       </section>
     `;
 
-    dateList
-      .querySelectorAll("[data-edit-date]")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          // Preserve current edits before switching days.
-          captureVisibleDraft();
+    dateList.querySelectorAll("[data-edit-date]").forEach((button) => {
+      button.addEventListener("click", () => {
+        // Preserve current edits before switching days.
+        captureVisibleDraft();
 
-          dateInput.value = button.dataset.editDate;
+        dateInput.value = button.dataset.editDate;
 
-          renderDateList();
-          renderDay();
+        renderDateList();
+        renderDay();
 
-          checklistContainer.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
+        checklistContainer.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
         });
       });
+    });
   }
 
   // --------------------------------------------------
@@ -534,23 +479,17 @@ async function setupDailyChecklist(inspection) {
     const dayAnswers = getAnswersForDate(selectedDate);
 
     const answerMap = new Map(
-      dayAnswers.map((answer) => [
-        Number(answer.checklist_item_id),
-        answer,
-      ]),
+      dayAnswers.map((answer) => [Number(answer.checklist_item_id), answer]),
     );
 
     const items = [...definitions].sort(
-      (a, b) =>
-        (a.order_number ?? 999) -
-        (b.order_number ?? 999),
+      (a, b) => (a.order_number ?? 999) - (b.order_number ?? 999),
     );
 
     const p = getProgress(selectedDate);
 
     progress.textContent =
-      `${p.completed} dari ${p.total} item dinilai untuk ` +
-      `${selectedDate}.`;
+      `${p.completed} dari ${p.total} item dinilai untuk ` + `${selectedDate}.`;
 
     checklistContainer.innerHTML = `
       <div class="${sectionBody}" style="padding:0">
@@ -569,11 +508,9 @@ async function setupDailyChecklist(inspection) {
                 items.length
                   ? items
                       .map((item) => {
-                        const answer =
-                          answerMap.get(Number(item.id));
+                        const answer = answerMap.get(Number(item.id));
 
-                        const currentStatus =
-                          answer?.status || "";
+                        const currentStatus = answer?.status || "";
 
                         return `
                           <tr data-item-id="${Number(item.id)}">
@@ -620,11 +557,7 @@ async function setupDailyChecklist(inspection) {
                                   `
                                   : `
                                     <span>
-                                      ${
-                                        currentStatus === "GOOD"
-                                          ? "Baik"
-                                          : "Belum dinilai"
-                                      }
+                                      ${currentStatus === "GOOD" ? "Baik" : "Belum dinilai"}
                                     </span>
                                   `
                               }
@@ -669,8 +602,7 @@ async function setupDailyChecklist(inspection) {
     if (saveButton) {
       saveButton.hidden = !isEditable;
 
-      saveButton.disabled =
-        !isEditable || definitions.length === 0;
+      saveButton.disabled = !isEditable || definitions.length === 0;
 
       saveButton.textContent = draftDays.size
         ? `Simpan Semua Perubahan (${draftDays.size})`
@@ -704,8 +636,7 @@ async function setupDailyChecklist(inspection) {
     const p = getProgress(dateInput.value);
 
     progress.textContent =
-      `${p.completed} dari ${p.total} item dinilai untuk ` +
-      `${dateInput.value}.`;
+      `${p.completed} dari ${p.total} item dinilai untuk ` + `${dateInput.value}.`;
 
     if (saveButton) {
       saveButton.textContent = draftDays.size
@@ -730,9 +661,7 @@ async function setupDailyChecklist(inspection) {
   async function saveAllDrafts() {
     captureVisibleDraft();
 
-    const days = [...draftDays.values()].sort((a, b) =>
-      a.answer_date.localeCompare(b.answer_date),
-    );
+    const days = [...draftDays.values()].sort((a, b) => a.answer_date.localeCompare(b.answer_date));
 
     if (days.length === 0) {
       toast("Belum ada perubahan untuk disimpan.", "error");
@@ -740,10 +669,7 @@ async function setupDailyChecklist(inspection) {
     }
 
     if (!isEditable) {
-      toast(
-        "Hanya pemeriksaan berstatus OPEN yang dapat diedit.",
-        "error",
-      );
+      toast("Hanya pemeriksaan berstatus OPEN yang dapat diedit.", "error");
 
       return false;
     }
@@ -751,35 +677,20 @@ async function setupDailyChecklist(inspection) {
     // Validate all drafts before calling the backend.
     for (const day of days) {
       if (!day.answer_date.startsWith(`${monthKey}-`)) {
-        toast(
-          `Tanggal ${day.answer_date} berada di luar bulan pemeriksaan.`,
-          "error",
-        );
+        toast(`Tanggal ${day.answer_date} berada di luar bulan pemeriksaan.`, "error");
 
         return false;
       }
 
       for (const item of day.items) {
-        if (
-          !Number.isInteger(item.checklist_item_id) ||
-          item.checklist_item_id <= 0
-        ) {
-          toast(
-            `Item checklist pada ${day.answer_date} tidak valid.`,
-            "error",
-          );
+        if (!Number.isInteger(item.checklist_item_id) || item.checklist_item_id <= 0) {
+          toast(`Item checklist pada ${day.answer_date} tidak valid.`, "error");
 
           return false;
         }
 
-        if (
-          item.status !== null &&
-          item.status !== "GOOD"
-        ) {
-          toast(
-            `Status checklist pada ${day.answer_date} tidak valid.`,
-            "error",
-          );
+        if (item.status !== null && item.status !== "GOOD") {
+          toast(`Status checklist pada ${day.answer_date} tidak valid.`, "error");
 
           return false;
         }
@@ -792,24 +703,17 @@ async function setupDailyChecklist(inspection) {
     }
 
     try {
-      await api(
-        `/inspections/${inspection.id}/checklist/bulk`,
-        {
-          method: "PUT",
-          body: { days },
-        },
-      );
+      await api(`/inspections/${inspection.id}/checklist/bulk`, {
+        method: "PUT",
+        body: { days },
+      });
 
-      const refreshedResponse = await api(
-        `/inspections/${inspection.id}`,
-      );
+      const refreshedResponse = await api(`/inspections/${inspection.id}`);
 
-      const refreshed =
-        refreshedResponse?.data ?? refreshedResponse;
+      const refreshed = refreshedResponse?.data ?? refreshedResponse;
 
       answers =
-        Array.isArray(refreshed.checklist_detail) &&
-        refreshed.checklist_detail.length
+        Array.isArray(refreshed.checklist_detail) && refreshed.checklist_detail.length
           ? refreshed.checklist_detail
           : Array.isArray(refreshed.checklist)
             ? refreshed.checklist
@@ -821,18 +725,12 @@ async function setupDailyChecklist(inspection) {
       renderDateList();
       renderDay();
 
-      toast(
-        "Semua perubahan checklist berhasil disimpan.",
-        "success",
-      );
+      toast("Semua perubahan checklist berhasil disimpan.", "success");
 
       return true;
     } catch (error) {
       // Keep the drafts if saving fails so the user can retry.
-      toast(
-        error.message || "Gagal menyimpan semua perubahan.",
-        "error",
-      );
+      toast(error.message || "Gagal menyimpan semua perubahan.", "error");
 
       return false;
     } finally {
@@ -890,9 +788,7 @@ async function main() {
   const id = qs("id");
 
   if (!id || !/^[1-9]\d*$/.test(id)) {
-    showError(
-      "Parameter ID pemeriksaan tidak valid atau tidak ditemukan.",
-    );
+    showError("Parameter ID pemeriksaan tidak valid atau tidak ditemukan.");
 
     return;
   }
@@ -902,8 +798,7 @@ async function main() {
   const room = insp.room || {};
   const failed = insp.result === "FAILED";
 
-  const canManageInspection =
-    hasPermission("inspections.manage");
+  const canManageInspection = hasPermission("inspections.manage");
 
   const canSignAsKepalaRuangan =
     user.role === "KEPALA_RUANGAN" &&
@@ -936,15 +831,13 @@ async function main() {
     }
   `;
 
-  document
-    .getElementById("btn-pdf")
-    .addEventListener("click", async () => {
-      try {
-        await downloadInspectionPdf(insp.id);
-      } catch (error) {
-        toast(error.message, "error");
-      }
-    });
+  document.getElementById("btn-pdf").addEventListener("click", async () => {
+    try {
+      await downloadInspectionPdf(insp.id);
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  });
 
   // Delete inspection.
   const btnDelete = document.getElementById("btn-delete");
@@ -974,10 +867,7 @@ async function main() {
         btnDelete.disabled = false;
         btnDelete.textContent = "Hapus Pemeriksaan";
 
-        toast(
-          error.message || "Gagal menghapus pemeriksaan",
-          "error",
-        );
+        toast(error.message || "Gagal menghapus pemeriksaan", "error");
       }
     });
   }
@@ -997,12 +887,9 @@ async function main() {
     "Desember",
   ];
 
-  const monthNumber =
-    insp.inspection_month?.match(/^\d{4}-(\d{2})-/)?.[1];
+  const monthNumber = insp.inspection_month?.match(/^\d{4}-(\d{2})-/)?.[1];
 
-  const monthName = monthNumber
-    ? monthNames[Number(monthNumber) - 1] || "—"
-    : "—";
+  const monthName = monthNumber ? monthNames[Number(monthNumber) - 1] || "—" : "—";
 
   document.getElementById("detail-root").innerHTML = `
     ${
@@ -1240,10 +1127,7 @@ async function main() {
     });
 
     document.addEventListener("keydown", (event) => {
-      if (
-        event.key === "Escape" &&
-        modal.classList.contains("is-open")
-      ) {
+      if (event.key === "Escape" && modal.classList.contains("is-open")) {
         closeKepalaSignModal();
       }
     });
@@ -1265,26 +1149,17 @@ async function main() {
       saveBtn.textContent = "Menyimpan...";
 
       try {
-        await api(
-          `/inspections/${insp.id}/signature/kepala-ruangan`,
-          {
-            method: "POST",
-            body: JSON.stringify(payload),
-          },
-        );
+        await api(`/inspections/${insp.id}/signature/kepala-ruangan`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
 
-        toast(
-          "Tanda tangan Kepala Ruangan berhasil disimpan",
-          "success",
-        );
+        toast("Tanda tangan Kepala Ruangan berhasil disimpan", "success");
 
         closeKepalaSignModal();
         window.location.reload();
       } catch (error) {
-        toast(
-          error.message || "Gagal menyimpan tanda tangan",
-          "error",
-        );
+        toast(error.message || "Gagal menyimpan tanda tangan", "error");
       } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = "Simpan Tanda Tangan";
@@ -1296,12 +1171,7 @@ async function main() {
 main().catch((error) => {
   console.error("Inspection detail error:", error);
 
-  showError(
-    error.message || "Gagal memuat detail pemeriksaan.",
-  );
+  showError(error.message || "Gagal memuat detail pemeriksaan.");
 
-  toast(
-    error.message || "Gagal memuat detail pemeriksaan.",
-    "error",
-  );
+  toast(error.message || "Gagal memuat detail pemeriksaan.", "error");
 });

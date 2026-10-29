@@ -24,9 +24,7 @@ export class SignaturePad {
         <button type="button" class="${btnSecondary} ${btnSm} sig-tab" data-mode="upload">Unggah</button>
       </div>
       <div class="sig-draw-panel">
-        <div class="signature-pad-wrap">
-          <canvas width="560" height="180" aria-label="Area tanda tangan"></canvas>
-        </div>
+      <canvas width="560" height="180" aria-label="Area tanda tangan"></canvas>
         <div class="signature-actions">
           <button type="button" class="${btnSecondary} ${btnSm}" data-act="clear">Hapus Tanda Tangan</button>
           <span class="hint">Gambar dengan mouse, sentuhan, atau stylus.</span>

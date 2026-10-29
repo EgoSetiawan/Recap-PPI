@@ -561,6 +561,36 @@ func upsertSignatureTx(tx *sql.Tx, sig *model.Signature) error {
 	return err
 }
 
+func (r *Repo) UpsertSignature(sig *model.Signature) error {
+	if sig == nil {
+		return errors.New("signature is required")
+	}
+
+	if sig.InspectionID <= 0 {
+		return errors.New("invalid inspection ID")
+	}
+
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if sig.Method == "" {
+		sig.Method = "draw"
+	}
+
+	if sig.SignedAt.IsZero() {
+		sig.SignedAt = time.Now().UTC()
+	}
+
+	if err := upsertSignatureTx(tx, sig); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func (r *Repo) UpdateInspectionNotes(inspectionID int64, notes string) error {
 	result, err := r.DB.Exec(
 		`UPDATE inspections

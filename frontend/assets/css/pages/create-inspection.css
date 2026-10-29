@@ -1,0 +1,555 @@
+/* =========================================================
+   INSPECTION CREATE PAGE
+   ========================================================= */
+
+.inspection-create-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.inspection-create-header {
+  margin-bottom: 16px;
+}
+
+/* =========================================================
+   ROOM AND MONTH FORM
+   ========================================================= */
+
+#detail-root .inspection-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+#detail-root .inspection-form-group {
+  min-width: 0;
+}
+
+#detail-root .inspection-form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+#detail-root .inspection-form-group select,
+#detail-root .inspection-form-group input,
+#detail-root .inspection-form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#detail-root .inspection-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* =========================================================
+   SELECTED ROOM
+   ========================================================= */
+
+#detail-root .inspection-selected-room {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+#detail-root .inspection-selected-room > span {
+  color: #64748b;
+}
+
+/* =========================================================
+   MONTHLY CALENDAR
+   ========================================================= */
+
+#detail-root #create-calendar {
+  width: 100%;
+  min-width: 0;
+  margin-top: 20px;
+}
+
+#detail-root .inspection-calendar {
+  width: 100%;
+  min-width: 0;
+  padding: 20px;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+#detail-root .inspection-calendar__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+#detail-root .inspection-calendar__eyebrow {
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#detail-root .inspection-calendar__title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+#detail-root .inspection-calendar__subtitle {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+#detail-root .inspection-calendar__summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 90px;
+  min-height: 70px;
+  padding: 12px;
+  box-sizing: border-box;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+#detail-root .inspection-calendar__summary strong {
+  font-size: 25px;
+  line-height: 1.2;
+}
+
+#detail-root .inspection-calendar__summary span {
+  margin-top: 4px;
+  font-size: 12px;
+  text-align: center;
+}
+
+#detail-root .inspection-calendar__weekdays,
+#detail-root .inspection-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+#detail-root .inspection-calendar__weekdays {
+  margin-bottom: 8px;
+}
+
+#detail-root .inspection-calendar__weekday {
+  padding: 8px 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+#detail-root .inspection-calendar__weekday.is-sunday {
+  color: #dc2626;
+}
+
+#detail-root .inspection-calendar__blank {
+  min-width: 0;
+}
+
+#detail-root .inspection-calendar__day {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  min-height: 78px;
+  padding: 10px;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+#detail-root .inspection-calendar__day:hover {
+  border-color: #93c5fd;
+  background: #f8fbff;
+}
+
+#detail-root .inspection-calendar__day:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+#detail-root .inspection-calendar__day-number {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+#detail-root .inspection-calendar__day-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+#detail-root .inspection-calendar__day-status-text {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+}
+
+#detail-root .inspection-calendar__day.is-selected {
+  border-color: #315778;
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1px #315778;
+}
+
+#detail-root .inspection-calendar__day.is-selected
+.inspection-calendar__day-number {
+  color: #1d4ed8;
+}
+
+#detail-root .inspection-calendar__day.is-dirty {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+#detail-root .inspection-calendar__day.is-selected.is-dirty {
+  border-color: #315778;
+  background: #eff6ff;
+}
+
+#detail-root .inspection-calendar__dot {
+  display: inline-block;
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+#detail-root .inspection-calendar__dot--pending {
+  background: #f59e0b;
+}
+
+#detail-root .inspection-calendar__dot--complete {
+  background: #16a34a;
+}
+
+#detail-root .inspection-calendar__dot--saved {
+  background: #2563eb;
+}
+
+#detail-root .inspection-calendar__legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+#detail-root .inspection-calendar__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+#detail-root .inspection-calendar__legend-selected {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #315778;
+  border-radius: 3px;
+}
+
+#detail-root .inspection-calendar__pending-note {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+}
+
+/* =========================================================
+   DAILY CHECKLIST
+   ========================================================= */
+
+#detail-root #selected-date-title {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#detail-root #selected-date-progress {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+#detail-root #create-daily-checklist {
+  width: 100%;
+  min-width: 0;
+}
+
+#detail-root #create-daily-checklist .table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+#detail-root #create-daily-checklist table {
+  width: 100%;
+  min-width: 480px;
+}
+
+#detail-root #create-daily-checklist th,
+#detail-root #create-daily-checklist td {
+  vertical-align: middle;
+}
+
+#detail-root #create-daily-checklist select {
+  min-width: 140px;
+}
+
+#detail-root #create-daily-checklist select,
+#detail-root #create-daily-checklist textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* =========================================================
+   SIGNATURE ACTIONS
+   ========================================================= */
+
+#detail-root .signature-action {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+#detail-root #signature-status {
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* =========================================================
+   SIGNATURE MODAL
+   This modal is appended directly to document.body.
+   ========================================================= */
+
+#signature-modal.kepala-sign-modal {
+  display: none !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+
+  align-items: center !important;
+  justify-content: center !important;
+
+  padding: 20px !important;
+  overflow-y: auto !important;
+
+  background: rgba(15, 23, 42, 0.55) !important;
+}
+
+#signature-modal.kepala-sign-modal.is-open[aria-hidden="false"] {
+  display: flex !important;
+}
+
+#signature-modal.kepala-sign-modal[aria-hidden="true"] {
+  display: none !important;
+}
+
+#signature-modal .kepala-sign-modal-dialog {
+  display: flex !important;
+  flex-direction: column !important;
+
+  width: min(680px, 100%) !important;
+  max-height: calc(100vh - 40px) !important;
+
+  margin: auto !important;
+  overflow: hidden !important;
+
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2) !important;
+}
+
+#signature-modal .kepala-sign-modal-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+
+  padding: 20px 24px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+#signature-modal .kepala-sign-modal-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+#signature-modal .kepala-sign-modal-header p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+#signature-modal .kepala-sign-modal-body {
+  padding: 20px 24px !important;
+  overflow-y: auto !important;
+}
+
+#signature-modal .kepala-sign-modal-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+
+  padding: 16px 24px !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+#signature-modal #sig-root {
+  width: 100%;
+  min-height: 260px;
+  overflow: hidden;
+}
+
+#signature-modal .signature-hint {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+#signature-modal .kepala-sign-modal-close {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 8px;
+  padding: 4px 10px;
+  background: transparent;
+  color: #64748b;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+#signature-modal .kepala-sign-modal-close:hover {
+  background: #f1f5f9;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 768px) {
+  #detail-root .inspection-calendar {
+    padding: 14px;
+  }
+
+  #detail-root .inspection-calendar__weekdays,
+  #detail-root .inspection-calendar__grid {
+    gap: 5px;
+  }
+
+  #detail-root .inspection-calendar__day {
+    min-height: 66px;
+    padding: 7px 5px;
+  }
+
+  #detail-root .inspection-calendar__day-status {
+    gap: 4px;
+  }
+
+  #detail-root .inspection-calendar__day-status-text {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 640px) {
+  #detail-root .inspection-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  #detail-root .inspection-calendar__header {
+    gap: 12px;
+  }
+
+  #detail-root .inspection-calendar__summary {
+    min-width: 75px;
+    min-height: 60px;
+    padding: 8px;
+  }
+
+  #detail-root .inspection-calendar__summary strong {
+    font-size: 21px;
+  }
+
+  #detail-root .inspection-calendar__day {
+    min-height: 58px;
+    padding: 6px 4px;
+    gap: 6px;
+  }
+
+  #detail-root .inspection-calendar__day-number {
+    font-size: 13px;
+  }
+
+  #detail-root .inspection-calendar__day-status-text {
+    font-size: 8px;
+  }
+
+  #detail-root .inspection-calendar__legend {
+    gap: 8px 12px;
+  }
+
+  #signature-modal.kepala-sign-modal {
+    padding: 10px !important;
+  }
+
+  #signature-modal .kepala-sign-modal-dialog {
+    max-height: calc(100vh - 20px) !important;
+  }
+
+  #signature-modal .kepala-sign-modal-header,
+  #signature-modal .kepala-sign-modal-body {
+    padding: 16px !important;
+  }
+
+  #signature-modal .kepala-sign-modal-footer {
+    padding: 12px 16px !important;
+  }
+}

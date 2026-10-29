@@ -392,3 +392,31 @@ func (h *Handler) SaveInspectionDate(c *gin.Context) {
 		"answer_date":   in.AnswerDate,
 	}, "Checklist tanggal berhasil disimpan")
 }
+
+func (h *Handler) AddKepalaSign(c *gin.Context) {
+	id, err := parseID(c, "id")
+	if err != nil {
+		response.FailCode(c, "VALIDATION_ERROR", "Invalid id", http.StatusUnprocessableEntity)
+		return
+	}
+	var sig model.Signature
+	if err := c.ShouldBindJSON(&sig); err != nil {
+		response.FailCode(
+			c,
+			"INVALID_JSON",
+			"Invalid JSON",
+			http.StatusBadRequest,
+		)
+		return
+	}
+	inspection, err := h.Svc.AddKepalaRuanganSignature(middleware.CurrentUser(c), id, sig.ImageDataURL)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(
+		c,
+		inspection,
+		"Tanda tangan Kepala Ruangan berhasil disimpan",
+	)
+}

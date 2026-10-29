@@ -1,4 +1,3 @@
-
 import { requireAuth, api } from "../api.js";
 import { mountShell, toast } from "../components/shell.js";
 import { escapeHtml, formatDate, statusBadge } from "../utils/format.js";
@@ -35,7 +34,9 @@ async function main() {
 
       const rows = (Array.isArray(data) ? data : []).filter(
         (inspection) =>
-          String(inspection.status || "").trim().toUpperCase() === "OPEN"
+          String(inspection.status || "")
+            .trim()
+            .toUpperCase() === "OPEN",
       );
 
       table.innerHTML = `
@@ -54,16 +55,14 @@ async function main() {
             <tbody>
               ${
                 rows.length
-                  ? rows.map((inspection) => {
-                      const roomName =
-                        inspection.room?.name ||
-                        `Room #${inspection.room_id}`;
+                  ? rows
+                      .map((inspection) => {
+                        const roomName = inspection.room?.name || `Room #${inspection.room_id}`;
 
-                      const inspectorName =
-                        inspection.inspector_name ||
-                        `User #${inspection.inspector_id}`;
+                        const inspectorName =
+                          inspection.inspector_name || `User #${inspection.inspector_id}`;
 
-                      return `
+                        return `
                         <tr>
                           <td>
                             ${formatDate(inspection.inspection_month)}
@@ -91,7 +90,8 @@ async function main() {
                           </td>
                         </tr>
                       `;
-                    }).join("")
+                      })
+                      .join("")
                   : `
                     <tr>
                       <td

@@ -171,53 +171,43 @@ func buildInspectionChecklist(days []SaveInspectionDateInput, month time.Time) (
 	return checklist, nil
 }
 
-// func (s *Service) kepalaSig(actor *model.User, in *model.Signature) *model.Signature {
-// 	if in == nil || !validSignatureImage(in.ImageDataURL) {
-// 		return nil
-// 	}
-// 	now := time.Now().UTC()
-// 	sig := *in
-// 	uid := actor.ID
-// 	sig.SignerUserID = &uid
-// 	sig.Role = "KEPALA"
-// 	if sig.Method == "" {
-// 		sig.Method = "draw"
-// 	}
-// 	if sig.SignerName == "" {
-// 		sig.SignerName = actor.Name
-// 	}
-// 	if sig.SignerTitle == "" {
-// 		if actor.Title != "" {
-// 			sig.SignerTitle = actor.Title
-// 		} else {
-// 			sig.SignerTitle = auth.DefaultTitle(actor.Role)
-// 		}
-// 	}
-// 	if sig.SignedAt.IsZero() {
-// 		sig.SignedAt = now
-// 	}
-// 	return &sig
-// }
-
-func (s *Service) kepalaSig(actor *model.User, imageDataURL string, id int64, in *model.Signature) *model.Signature {
-	if actor == nil || !auth.IsKepala(actor.Role) {
-		return nil
+func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDataURL string) (*model.Signature, error) {
+	if actor == nil {
+		return nil, response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
 	}
+
+	if !auth.IsKepala(actor.Role) {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya kepala yang bisa tanda tangan",
+			http.StatusForbidden,
+		)
+	}
+
+	if _, err := s.getInspectionForActor(actor, id); err != nil {
+		return nil, err
+	}
+
 	imageDataURL = strings.TrimSpace(imageDataURL)
 	if !validSignatureImage(imageDataURL) {
-		return nil
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Tanda tangan tidak valid",
+			http.StatusUnprocessableEntity,
+		)
 	}
 	uid := actor.ID
 	title := actor.Title
 	if title == "" {
 		title = auth.DefaultTitle(actor.Role)
 	}
-	_, err := s.getInspectionForActor(actor, id)
 
-	if err != nil {
-		return nil
-	}
 	return &model.Signature{
+		InspectionID: id,
 		SignerUserID: &uid,
 		Role:         "KEPALA",
 		Method:       "draw",
@@ -225,7 +215,7 @@ func (s *Service) kepalaSig(actor *model.User, imageDataURL string, id int64, in
 		SignerTitle:  title,
 		ImageDataURL: imageDataURL,
 		SignedAt:     time.Now().UTC(),
-	}
+	}, nil
 }
 
 func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) (*model.Inspection, error) {
@@ -638,7 +628,6 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 			Notes:           "",
 		})
 	}
-
 	// This repository method replaces answers for this date only.
 	// It must not update inspections.notes.
 	return s.Repo.ReplaceChecklistForDate(
