@@ -954,9 +954,6 @@ func (s *Service) SubmitInspections(actor *model.User, id int64) (*model.Inspect
 	}
 	// Get the previously saved Anggota signature.
 	sign := findSignatureByRole(ins.Signatures, "ANGGOTA")
-	if err != nil {
-		return nil, err
-	}
 
 	// Check whether a signature exists.
 	if sign == nil {
