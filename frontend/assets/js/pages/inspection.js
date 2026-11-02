@@ -33,9 +33,7 @@ let monthKey = "";
 function currentMonthValue() {
   const now = new Date();
 
-  return `${now.getFullYear()}-${String(
-    now.getMonth() + 1,
-  ).padStart(2, "0")}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function unwrapArray(response) {
@@ -296,11 +294,9 @@ function renderPage() {
     `,
   );
 
-  document
-    .getElementById("btn-cancel-create")
-    .addEventListener("click", () => {
-      window.location.href = "latest.html";
-    });
+  document.getElementById("btn-cancel-create").addEventListener("click", () => {
+    window.location.href = "latest.html";
+  });
 }
 
 // =========================================================
@@ -321,11 +317,7 @@ async function loadRooms() {
         (room) => `
           <option value="${escapeHtml(String(room.id))}">
             ${escapeHtml(roomName(room))}
-            ${
-              roomCode(room)
-                ? `(${escapeHtml(roomCode(room))})`
-                : ""
-            }
+            ${roomCode(room) ? `(${escapeHtml(roomCode(room))})` : ""}
           </option>
         `,
       )
@@ -344,12 +336,9 @@ async function loadRooms() {
 // =========================================================
 
 async function loadChecklistForRoom() {
-  const roomID = Number(
-    document.getElementById("sel-room").value,
-  );
+  const roomID = Number(document.getElementById("sel-room").value);
 
-  const month =
-    document.getElementById("inspection-month").value;
+  const month = document.getElementById("inspection-month").value;
 
   if (!roomID) {
     toast("Pilih ruangan terlebih dahulu.", "error");
@@ -361,9 +350,7 @@ async function loadChecklistForRoom() {
     return;
   }
 
-  const room = rooms.find(
-    (item) => Number(item.id) === roomID,
-  );
+  const room = rooms.find((item) => Number(item.id) === roomID);
 
   if (!room) {
     toast("Ruangan tidak ditemukan.", "error");
@@ -391,25 +378,21 @@ async function loadChecklistForRoom() {
   draftDays.clear();
   selectedDate = `${monthKey}-01`;
 
-  document.getElementById("selected-room-name").textContent =
-    roomName(selectedRoom);
+  document.getElementById("selected-room-name").textContent = roomName(selectedRoom);
 
-  document.getElementById("selected-room-code").textContent =
-    roomCode(selectedRoom)
-      ? `Kode: ${roomCode(selectedRoom)}`
-      : "";
+  document.getElementById("selected-room-code").textContent = roomCode(selectedRoom)
+    ? `Kode: ${roomCode(selectedRoom)}`
+    : "";
 
   document.getElementById("bulk-create-form").hidden = false;
 
   renderCreateCalendar();
   renderCreateDay();
 
-  document
-    .getElementById("bulk-create-form")
-    .scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+  document.getElementById("bulk-create-form").scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
 }
 
 // =========================================================
@@ -427,11 +410,7 @@ function dateKey(day) {
 }
 
 function currentDayItems() {
-  const rows = [
-    ...document.querySelectorAll(
-      "#create-daily-checklist tr[data-item-id]",
-    ),
-  ];
+  const rows = [...document.querySelectorAll("#create-daily-checklist tr[data-item-id]")];
 
   return rows.map((row) => ({
     checklist_item_id: Number(row.dataset.itemId),
@@ -476,9 +455,7 @@ function renderCreateCalendar() {
   const [year, month] = monthKey.split("-").map(Number);
   const totalDays = getDaysInMonth();
 
-  const firstWeekday = new Date(
-    Date.UTC(year, month - 1, 1),
-  ).getUTCDay();
+  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
 
   const monthTitle = new Intl.DateTimeFormat("id-ID", {
     month: "long",
@@ -486,15 +463,7 @@ function renderCreateCalendar() {
     timeZone: "UTC",
   }).format(new Date(Date.UTC(year, month - 1, 1)));
 
-  const weekdays = [
-    "Min",
-    "Sen",
-    "Sel",
-    "Rab",
-    "Kam",
-    "Jum",
-    "Sab",
-  ];
+  const weekdays = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
   const blanks = Array.from(
     { length: firstWeekday },
@@ -506,28 +475,24 @@ function renderCreateCalendar() {
     `,
   ).join("");
 
-  const days = Array.from(
-    { length: totalDays },
-    (_, index) => {
-      const day = index + 1;
-      const date = dateKey(day);
-      const draft = draftDays.get(date);
-      const completed = countCompleted(draft?.items || []);
+  const days = Array.from({ length: totalDays }, (_, index) => {
+    const day = index + 1;
+    const date = dateKey(day);
+    const draft = draftDays.get(date);
+    const completed = countCompleted(draft?.items || []);
 
-      const selected = date === selectedDate;
-      const complete =
-        definitions.length > 0 &&
-        completed === definitions.length;
+    const selected = date === selectedDate;
+    const complete = definitions.length > 0 && completed === definitions.length;
 
-      let statusText = "—";
+    let statusText = "—";
 
-      if (draft) {
-        statusText = complete
-          ? "Belum disimpan · Lengkap"
-          : `${completed}/${definitions.length} · Belum disimpan`;
-      }
+    if (draft) {
+      statusText = complete
+        ? "Belum disimpan · Lengkap"
+        : `${completed}/${definitions.length} · Belum disimpan`;
+    }
 
-      return `
+    return `
         <button
           type="button"
           class="inspection-calendar__day${selected ? " is-selected" : ""}${draft ? " is-dirty" : ""}"
@@ -551,8 +516,7 @@ function renderCreateCalendar() {
           </span>
         </button>
       `;
-    },
-  ).join("");
+  }).join("");
 
   document.getElementById("create-calendar").innerHTML = `
     <section
@@ -631,18 +595,16 @@ function renderCreateCalendar() {
     </section>
   `;
 
-  document
-    .querySelectorAll("[data-create-date]")
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        captureCurrentDay();
+  document.querySelectorAll("[data-create-date]").forEach((button) => {
+    button.addEventListener("click", () => {
+      captureCurrentDay();
 
-        selectedDate = button.dataset.createDate;
+      selectedDate = button.dataset.createDate;
 
-        renderCreateCalendar();
-        renderCreateDay();
-      });
+      renderCreateCalendar();
+      renderCreateDay();
     });
+  });
 }
 
 // =========================================================
@@ -652,21 +614,13 @@ function renderCreateCalendar() {
 function renderCreateDay() {
   const items = getDraftItems(selectedDate);
 
-  const itemMap = new Map(
-    items.map((item) => [
-      Number(item.checklist_item_id),
-      item,
-    ]),
-  );
+  const itemMap = new Map(items.map((item) => [Number(item.checklist_item_id), item]));
 
   const sortedDefinitions = [...definitions].sort(
-    (a, b) =>
-      (a.order_number ?? 999) -
-      (b.order_number ?? 999),
+    (a, b) => (a.order_number ?? 999) - (b.order_number ?? 999),
   );
 
-  document.getElementById("selected-date-title").textContent =
-    `Checklist tanggal ${selectedDate}`;
+  document.getElementById("selected-date-title").textContent = `Checklist tanggal ${selectedDate}`;
 
   document.getElementById("selected-date-progress").textContent =
     `${countCompleted(items)} dari ${definitions.length} item dinilai untuk ${selectedDate}.`;
@@ -687,12 +641,9 @@ function renderCreateDay() {
               sortedDefinitions.length
                 ? sortedDefinitions
                     .map((definition) => {
-                      const answer = itemMap.get(
-                        Number(definition.id),
-                      );
+                      const answer = itemMap.get(Number(definition.id));
 
-                      const currentStatus =
-                        answer?.status || "";
+                      const currentStatus = answer?.status || "";
 
                       return `
                         <tr data-item-id="${Number(definition.id)}">
@@ -751,18 +702,14 @@ function renderCreateDay() {
     </div>
   `;
 
-  const checklist = document.getElementById(
-    "create-daily-checklist",
-  );
+  const checklist = document.getElementById("create-daily-checklist");
 
   checklist.oninput = (event) => {
     if (!event.target.matches("[data-status]")) return;
 
     captureCurrentDay(true);
 
-    document.getElementById(
-      "selected-date-progress",
-    ).textContent =
+    document.getElementById("selected-date-progress").textContent =
       `${countCompleted(draftDays.get(selectedDate)?.items || [])} dari ${definitions.length} item dinilai untuk ${selectedDate}.`;
 
     // Re-render only the calendar; do not replace the active checklist.
@@ -784,9 +731,7 @@ function setupSignatureModal() {
     modal.setAttribute("aria-hidden", "false");
 
     if (!signaturePad) {
-      signaturePad = new SignaturePad(
-        document.getElementById("sig-root"),
-      );
+      signaturePad = new SignaturePad(document.getElementById("sig-root"));
     } else {
       signaturePad.clear();
     }
@@ -801,25 +746,17 @@ function setupSignatureModal() {
     }
   }
 
-  document
-    .getElementById("btn-open-signature")
-    .addEventListener("click", openModal);
+  document.getElementById("btn-open-signature").addEventListener("click", openModal);
 
-  document
-    .getElementById("btn-close-signature")
-    .addEventListener("click", closeModal);
+  document.getElementById("btn-close-signature").addEventListener("click", closeModal);
 
-  document
-    .getElementById("btn-cancel-signature")
-    .addEventListener("click", closeModal);
+  document.getElementById("btn-cancel-signature").addEventListener("click", closeModal);
 
-  document
-    .getElementById("btn-clear-signature")
-    .addEventListener("click", () => {
-      if (signaturePad) {
-        signaturePad.clear();
-      }
-    });
+  document.getElementById("btn-clear-signature").addEventListener("click", () => {
+    if (signaturePad) {
+      signaturePad.clear();
+    }
+  });
 
   modal.addEventListener("click", (event) => {
     if (event.target === modal) {
@@ -828,61 +765,49 @@ function setupSignatureModal() {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (
-      event.key === "Escape" &&
-      modal.classList.contains("is-open")
-    ) {
+    if (event.key === "Escape" && modal.classList.contains("is-open")) {
       closeModal();
     }
   });
 
-  document
-    .getElementById("btn-save-signature")
-    .addEventListener("click", async (event) => {
-      const button = event.currentTarget;
+  document.getElementById("btn-save-signature").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
 
-      if (!signaturePad || signaturePad.isEmpty()) {
-        toast("Tanda tangan wajib diisi.", "error");
+    if (!signaturePad || signaturePad.isEmpty()) {
+      toast("Tanda tangan wajib diisi.", "error");
+      return;
+    }
+
+    button.disabled = true;
+
+    try {
+      const payload = await signaturePad.getPayload();
+
+      if (
+        !payload ||
+        typeof payload.image_data_url !== "string" ||
+        !payload.image_data_url.startsWith("data:image/") ||
+        payload.image_data_url.length < 80
+      ) {
+        toast("Tanda tangan tidak valid.", "error");
         return;
       }
 
-      button.disabled = true;
+      signaturePayload = payload;
 
-      try {
-        const payload = await signaturePad.getPayload();
+      document.getElementById("signature-status").textContent = "Tanda tangan sudah disimpan";
 
-        if (
-          !payload ||
-          typeof payload.image_data_url !== "string" ||
-          !payload.image_data_url.startsWith("data:image/") ||
-          payload.image_data_url.length < 80
-        ) {
-          toast("Tanda tangan tidak valid.", "error");
-          return;
-        }
+      document.getElementById("btn-open-signature").textContent = "Ubah Tanda Tangan";
 
-        signaturePayload = payload;
+      closeModal();
 
-        document.getElementById(
-          "signature-status",
-        ).textContent = "Tanda tangan sudah disimpan";
-
-        document.getElementById(
-          "btn-open-signature",
-        ).textContent = "Ubah Tanda Tangan";
-
-        closeModal();
-
-        toast("Tanda tangan berhasil disimpan.", "success");
-      } catch (error) {
-        toast(
-          error.message || "Gagal menyimpan tanda tangan.",
-          "error",
-        );
-      } finally {
-        button.disabled = false;
-      }
-    });
+      toast("Tanda tangan berhasil disimpan.", "success");
+    } catch (error) {
+      toast(error.message || "Gagal menyimpan tanda tangan.", "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
 }
 
 // =========================================================
@@ -890,101 +815,71 @@ function setupSignatureModal() {
 // =========================================================
 
 function setupCreateInspection() {
-  document
-    .getElementById("btn-create-inspection")
-    .addEventListener("click", async (event) => {
-      const button = event.currentTarget;
+  document.getElementById("btn-create-inspection").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
 
-      captureCurrentDay();
+    captureCurrentDay();
 
-      if (!selectedRoom) {
-        toast(
-          "Pilih ruangan dan muat checklist terlebih dahulu.",
-          "error",
-        );
-        return;
+    if (!selectedRoom) {
+      toast("Pilih ruangan dan muat checklist terlebih dahulu.", "error");
+      return;
+    }
+
+    if (!signaturePayload) {
+      toast("Tanda tangan petugas wajib diisi.", "error");
+      return;
+    }
+
+    const days = [...draftDays.values()].sort((a, b) => a.answer_date.localeCompare(b.answer_date));
+
+    if (!days.length) {
+      toast("Isi checklist pada minimal satu tanggal sebelum membuat pemeriksaan.", "error");
+      return;
+    }
+
+    const hasAnyAnswer = days.some((day) => day.items.some((item) => Boolean(item.status)));
+
+    if (!hasAnyAnswer) {
+      toast("Isi minimal satu penilaian sebelum membuat pemeriksaan.", "error");
+      return;
+    }
+
+    const payload = {
+      room_id: Number(selectedRoom.id),
+      inspection_month: `${monthKey}-01T00:00:00Z`,
+      notes: document.getElementById("insp-notes").value.trim(),
+      signature: signaturePayload,
+      days,
+    };
+
+    button.disabled = true;
+    button.textContent = "Membuat pemeriksaan...";
+
+    try {
+      const response = await api("/inspections", {
+        method: "POST",
+        body: payload,
+      });
+
+      const inspection =
+        response?.data?.inspection ?? response?.data ?? response?.inspection ?? response;
+
+      if (!inspection?.id) {
+        throw new Error("Server tidak mengembalikan ID pemeriksaan.");
       }
 
-      if (!signaturePayload) {
-        toast("Tanda tangan petugas wajib diisi.", "error");
-        return;
-      }
+      toast("Pemeriksaan dan checklist berhasil dibuat.", "success");
 
-      const days = [...draftDays.values()].sort(
-        (a, b) =>
-          a.answer_date.localeCompare(b.answer_date),
-      );
+      window.location.href = `inspection-detail.html?id=${encodeURIComponent(inspection.id)}`;
+    } catch (error) {
+      console.error("Create inspection error:", error);
 
-      if (!days.length) {
-        toast(
-          "Isi checklist pada minimal satu tanggal sebelum membuat pemeriksaan.",
-          "error",
-        );
-        return;
-      }
-
-      const hasAnyAnswer = days.some((day) =>
-        day.items.some((item) => Boolean(item.status)),
-      );
-
-      if (!hasAnyAnswer) {
-        toast(
-          "Isi minimal satu penilaian sebelum membuat pemeriksaan.",
-          "error",
-        );
-        return;
-      }
-
-      const payload = {
-        room_id: Number(selectedRoom.id),
-        inspection_month: `${monthKey}-01T00:00:00Z`,
-        notes: document
-          .getElementById("insp-notes")
-          .value.trim(),
-        signature: signaturePayload,
-        days,
-      };
-
-      button.disabled = true;
-      button.textContent = "Membuat pemeriksaan...";
-
-      try {
-        const response = await api("/inspections", {
-          method: "POST",
-          body: payload,
-        });
-
-        const inspection =
-          response?.data?.inspection ??
-          response?.data ??
-          response?.inspection ??
-          response;
-
-        if (!inspection?.id) {
-          throw new Error(
-            "Server tidak mengembalikan ID pemeriksaan.",
-          );
-        }
-
-        toast(
-          "Pemeriksaan dan checklist berhasil dibuat.",
-          "success",
-        );
-
-        window.location.href =
-          `inspection-detail.html?id=${encodeURIComponent(inspection.id)}`;
-      } catch (error) {
-        console.error("Create inspection error:", error);
-
-        toast(
-          error.message || "Gagal membuat pemeriksaan.",
-          "error",
-        );
-      } finally {
-        button.disabled = false;
-        button.textContent = "Buat Pemeriksaan";
-      }
-    });
+      toast(error.message || "Gagal membuat pemeriksaan.", "error");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Buat Pemeriksaan";
+    }
+  });
 }
 
 // =========================================================
@@ -996,7 +891,7 @@ async function main() {
 
   if (!user) return;
 
-  await mountShell("latest.html", {
+  await mountShell("inspection.html", {
     breadcrumb: `
       <a href="latest.html">Pemeriksaan</a>
       <span>/</span>
@@ -1013,32 +908,25 @@ async function main() {
   try {
     await loadRooms();
   } catch (error) {
-    showPageError(
-      error.message || "Gagal memuat daftar ruangan.",
-    );
+    showPageError(error.message || "Gagal memuat daftar ruangan.");
     return;
   }
 
-  document
-    .getElementById("btn-load-checklist")
-    .addEventListener("click", async (event) => {
-      const button = event.currentTarget;
+  document.getElementById("btn-load-checklist").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
 
-      button.disabled = true;
-      button.textContent = "Memuat...";
+    button.disabled = true;
+    button.textContent = "Memuat...";
 
-      try {
-        await loadChecklistForRoom();
-      } catch (error) {
-        toast(
-          error.message || "Gagal memuat checklist.",
-          "error",
-        );
-      } finally {
-        button.disabled = false;
-        button.textContent = "Muat Checklist";
-      }
-    });
+    try {
+      await loadChecklistForRoom();
+    } catch (error) {
+      toast(error.message || "Gagal memuat checklist.", "error");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Muat Checklist";
+    }
+  });
 
   setupSignatureModal();
   setupCreateInspection();
@@ -1047,7 +935,5 @@ async function main() {
 main().catch((error) => {
   console.error("Create inspection error:", error);
 
-  showPageError(
-    error.message || "Gagal memuat halaman pemeriksaan.",
-  );
+  showPageError(error.message || "Gagal memuat halaman pemeriksaan.");
 });

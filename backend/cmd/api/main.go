@@ -82,6 +82,9 @@ func main() {
 		authed.PUT("/inspections/:id/checklist/date", h.SaveInspectionDate)
 		authed.PUT("/inspections/:id/notes", h.UpdateInspectionNotes)
 		authed.POST("/inspections/:id/signature/kepala-ruangan", h.AddKepalaSign)
+		authed.POST("/inspections/:id/submit-approval", h.SumbitHandler)
+		authed.POST("/inspections/:id/approve", h.ApproveInspection)
+		authed.POST("/inspections/:id/signatures/anggota", h.AddAnggotaSign)
 	}
 
 	addr := ":" + cfg.Port

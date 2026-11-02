@@ -16,6 +16,39 @@ import {
   empty,
 } from "../ui.js";
 
+/*
+ * Inline icon set (24x24, stroke based) so the shell stays
+ * dependency free while still looking crisp on every screen.
+ */
+const ICONS = {
+  brand:
+    '<path d="M12 3 4 6v6c0 4.4 3.4 8.4 8 9 4.6-.6 8-4.6 8-9V6l-8-3z"/><path d="M12 9v6M9 12h6"/>',
+  dashboard:
+    '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
+  rooms:
+    '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-4h6v4"/><path d="M9 9h.01M15 9h.01M9 13h.01M15 13h.01"/>',
+  checklist:
+    '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+  inspection:
+    '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 12v6M9 15h6"/>',
+  draft: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  history: '<path d="M3 12a9 9 0 1 0 2.7-6.4L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+  users:
+    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  logout:
+    '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  close: '<path d="m6 6 12 12M18 6 6 18"/>',
+  chevron: '<path d="m6 9 6 6 6-6"/>',
+};
+
+function icon(name, className = "icon") {
+  const body = ICONS[name] || "";
+  return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+}
+
 const NAV_SECTIONS = [
   {
     title: null,
@@ -23,6 +56,7 @@ const NAV_SECTIONS = [
       {
         href: "dashboard.html",
         label: "Dashboard",
+        icon: "dashboard",
         roles: ["SUPER_ADMIN", "KEPALA", "ANGGOTA"],
       },
     ],
@@ -34,11 +68,13 @@ const NAV_SECTIONS = [
       {
         href: "rooms.html",
         label: "Ruangan",
+        icon: "rooms",
         roles: ["SUPER_ADMIN", "KEPALA"],
       },
       {
         href: "checklist.html",
         label: "Item Pemeriksaan",
+        icon: "checklist",
         roles: ["SUPER_ADMIN", "KEPALA"],
       },
     ],
@@ -50,7 +86,8 @@ const NAV_SECTIONS = [
       {
         href: "inspection.html",
         label: "Pemeriksaan",
-        roles: ["ANGGOTA, KEPALA"],
+        icon: "inspection",
+        roles: ["SUPER_ADMIN", "ANGGOTA"],
       },
     ],
   },
@@ -61,11 +98,13 @@ const NAV_SECTIONS = [
       {
         href: "open-inspection.html",
         label: "Draft Pemeriksaan",
+        icon: "draft",
         roles: ["SUPER_ADMIN", "KEPALA", "ANGGOTA"],
       },
       {
         href: "latest.html",
         label: "Riwayat Pemeriksaan",
+        icon: "history",
         roles: ["SUPER_ADMIN", "KEPALA", "ANGGOTA"],
       },
     ],
@@ -77,6 +116,7 @@ const NAV_SECTIONS = [
       {
         href: "users.html",
         label: "Pengguna",
+        icon: "users",
         roles: ["SUPER_ADMIN"],
       },
     ],
@@ -289,8 +329,10 @@ function buildNav(activePage) {
             <a
               class="nav-link ${active ? "active" : ""}"
               href="${item.href}"
+              ${active ? 'aria-current="page"' : ""}
             >
-              ${escapeHtml(item.label)}
+              <span class="nav-icon">${icon(item.icon)}</span>
+              <span class="nav-label">${escapeHtml(item.label)}</span>
             </a>
           `;
       })
@@ -437,6 +479,15 @@ export async function mountShell(activePage, options = {}) {
     .slice(0, 2)
     .toUpperCase();
 
+  const todayLabel = new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+
+  const roleText = roleLabel(user?.role || "");
+
   shell.className = "app-shell";
 
   shell.innerHTML = `
@@ -453,12 +504,18 @@ export async function mountShell(activePage, options = {}) {
       <div class="sidebar-top">
 
         <div class="brand">
-          <div class="brand-mark">
-            RSKHKB Facility Ops
-          </div>
+          <span class="brand-mark-icon">
+            ${icon("brand")}
+          </span>
 
-          <div class="brand-name">
-            Pemeriksaan Ruangan
+          <div class="brand-copy">
+            <div class="brand-mark">
+              RSKHKB Facility Ops
+            </div>
+
+            <div class="brand-name">
+              Pemeriksaan Ruangan
+            </div>
           </div>
         </div>
 
@@ -468,7 +525,7 @@ export async function mountShell(activePage, options = {}) {
           id="btn-nav-close"
           aria-label="Tutup navigasi"
         >
-          ✕
+          ${icon("close")}
         </button>
 
       </div>
@@ -478,11 +535,12 @@ export async function mountShell(activePage, options = {}) {
       </nav>
 
       <div class="sidebar-foot">
-        <strong>
-          ${escapeHtml(user?.name || "")}
-        </strong>
+        <span class="foot-avatar">${escapeHtml(initials)}</span>
 
-        ${escapeHtml(roleLabel(user?.role || ""))}
+        <div class="foot-copy">
+          <strong>${escapeHtml(user?.name || "")}</strong>
+          <span class="foot-role">${escapeHtml(roleText)}</span>
+        </div>
       </div>
     </aside>
 
@@ -500,7 +558,7 @@ export async function mountShell(activePage, options = {}) {
             aria-controls="app-sidebar"
             aria-expanded="false"
           >
-            ☰
+            ${icon("menu")}
           </button>
 
           <div
@@ -509,26 +567,44 @@ export async function mountShell(activePage, options = {}) {
           >
             RSU Dr. H. Koesnadi
           </div>
+
+          <form
+            class="topbar-search"
+            id="global-search-form"
+            role="search"
+          >
+            <span class="search-icon">
+              ${icon("search")}
+            </span>
+
+            <input
+              type="search"
+              name="q"
+              placeholder="Cari ruangan…"
+              aria-label="Cari ruangan"
+              autocomplete="off"
+            />
+          </form>
         </div>
 
         <div class="topbar-actions">
 
+          <span class="topbar-date">
+            ${escapeHtml(todayLabel)}
+          </span>
+
+          <span
+            class="topbar-divider"
+            aria-hidden="true"
+          ></span>
+
           <button
             type="button"
-            class="${btnSecondary} ${btnSm} notif-dot"
+            class="${iconBtn} notif-dot"
             id="btn-notif"
             aria-label="Notifikasi"
           >
-            <span
-              class="notif-icon"
-              aria-hidden="true"
-            >
-              N
-            </span>
-
-            <span class="notif-label">
-              Notifikasi
-            </span>
+            ${icon("bell", "bell-icon")}
           </button>
 
           <button
@@ -536,18 +612,51 @@ export async function mountShell(activePage, options = {}) {
             class="${btnSecondary} ${btnSm} btn-logout-full"
             id="btn-logout"
           >
+            ${icon("logout")}
             Keluar
           </button>
 
-          <button
-            type="button"
-            class="${iconBtn} user-chip"
-            id="btn-user-menu"
-            aria-label="${escapeHtml(user?.name || "Pengguna")}"
-            title="${escapeHtml(user?.name || "")} — Keluar"
-          >
-            ${escapeHtml(initials)}
-          </button>
+          <div class="user-menu-wrap">
+            <button
+              type="button"
+              class="user-chip"
+              id="btn-user-menu"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-label="Menu pengguna"
+              title="${escapeHtml(user?.name || "")}"
+            >
+              <span class="avatar">${escapeHtml(initials)}</span>
+
+              <span class="user-meta">
+                <strong>${escapeHtml(user?.name || "")}</strong>
+                <span>${escapeHtml(roleText)}</span>
+              </span>
+
+              ${icon("chevron", "chevron")}
+            </button>
+
+            <div
+              class="user-menu hidden"
+              id="user-menu"
+              role="menu"
+            >
+              <div class="user-menu-head">
+                <strong>${escapeHtml(user?.name || "")}</strong>
+                <span>${escapeHtml(user?.email || "")}</span>
+              </div>
+
+              <button
+                type="button"
+                class="user-menu-item"
+                id="btn-user-logout"
+                role="menuitem"
+              >
+                ${icon("logout")}
+                Keluar
+              </button>
+            </div>
+          </div>
 
         </div>
 
@@ -572,11 +681,44 @@ export async function mountShell(activePage, options = {}) {
   bindNavDrawer(shell);
 
   /*
-   * Logout
+   * Flash message left by the previous page (e.g. login -> dashboard)
+   */
+  const flash = sessionStorage.getItem("flash_toast");
+
+  if (flash) {
+    sessionStorage.removeItem("flash_toast");
+    toast(flash, "success");
+  }
+
+  /*
+   * Logout + user menu
    */
   document.getElementById("btn-logout")?.addEventListener("click", () => logout());
 
-  document.getElementById("btn-user-menu")?.addEventListener("click", () => logout());
+  const userMenuButton = document.getElementById("btn-user-menu");
+  const userMenuPanel = document.getElementById("user-menu");
+
+  const setUserMenu = (open) => {
+    userMenuPanel?.classList.toggle("hidden", !open);
+    userMenuButton?.setAttribute("aria-expanded", String(open));
+  };
+
+  userMenuButton?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setUserMenu(userMenuPanel?.classList.contains("hidden"));
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!userMenuPanel || userMenuPanel.classList.contains("hidden")) return;
+    if (event.target === userMenuButton || userMenuPanel.contains(event.target)) return;
+    setUserMenu(false);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setUserMenu(false);
+  });
+
+  document.getElementById("btn-user-logout")?.addEventListener("click", () => logout());
 
   /*
    * Global room search

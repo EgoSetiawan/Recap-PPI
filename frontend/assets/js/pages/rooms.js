@@ -1,7 +1,21 @@
 import { requireAuth, api, hasPermission } from "../api.js";
 import { mountShell, toast, openModal } from "../components/shell.js";
-import { escapeHtml, statusBadge, qs, conditionBadge } from "../utils/format.js";
+import { escapeHtml, qs } from "../utils/format.js";
 import { btnSecondary, btnSm, formGroup, tableWrap, empty } from "../ui.js";
+
+const ROOM_TYPES = {
+  INPATIENT: "Rawat Inap",
+  ICU: "ICU",
+  ICCU: "ICCU",
+  OPERATING_ROOM: "IBS",
+  EMERGENCY: "IGD",
+  CHEMOTHERAPY: "Kemoterapi",
+  HEMODIALYSIS: "Hemodialisa",
+};
+
+function roomTypeLabel(type) {
+  return ROOM_TYPES[type] || type || "—";
+}
 
 async function main() {
   const user = await requireAuth();
@@ -88,8 +102,8 @@ async function main() {
           <tr>
             <th>Kode</th>
             <th>Nama Ruangan</th>
-            <th>Tipe</th>
-            <th>Anggota PPI</th>
+            <th class="hide-sm">Tipe</th>
+            <th class="hide-sm">Anggota PPI</th>
             <th></th>
           </tr>
         </thead>
@@ -100,18 +114,33 @@ async function main() {
               .map((r) => {
                 const actors = r.assigned_actors || [];
 
+                const initials = (name) =>
+                  String(name || "?")
+                    .split(/\s+/)
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase();
+
                 const actorNames = actors.length
-                  ? actors
-                      .map(
-                        (actor) => `
-                          <div>
-                            <strong>${escapeHtml(actor.name || "—")}</strong>
-                            ${actor.nip ? `<br><small>${escapeHtml(actor.nip)}</small>` : ""}
-                          </div>
-                        `,
-                      )
-                      .join("")
-                  : "Belum ditugaskan";
+                  ? `
+                    <div class="actor-list">
+                      ${actors
+                        .map(
+                          (actor) => `
+                            <div class="actor">
+                              <span class="actor-avatar">${escapeHtml(initials(actor.name))}</span>
+                              <span class="actor-copy">
+                                <strong>${escapeHtml(actor.name || "—")}</strong>
+                                ${actor.nip ? `<small>${escapeHtml(actor.nip)}</small>` : ""}
+                              </span>
+                            </div>
+                          `,
+                        )
+                        .join("")}
+                    </div>
+                  `
+                  : '<span class="muted-text">Belum ditugaskan</span>';
 
                 return `
                   <tr>
@@ -123,11 +152,11 @@ async function main() {
 
                     <td>${escapeHtml(r.name)}</td>
 
-                    <td>
-                      ${escapeHtml(r.room_type || "—")}
+                    <td class="hide-sm">
+                      ${escapeHtml(roomTypeLabel(r.room_type))}
                     </td>
 
-                    <td>${actorNames}</td>
+                    <td class="hide-sm">${actorNames}</td>
 
                     <td class="row-actions">
                       <a

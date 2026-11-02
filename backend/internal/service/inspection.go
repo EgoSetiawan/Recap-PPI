@@ -190,8 +190,37 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 		)
 	}
 
-	if _, err := s.getInspectionForActor(actor, id); err != nil {
+	ins, err := s.getInspectionForActor(actor, id)
+	if err != nil {
 		return nil, err
+	}
+
+	// The kepala only signs the review stage, after the petugas submitted.
+	status := strings.ToUpper(strings.TrimSpace(ins.Status))
+
+	if status == StatusApproved {
+		return nil, response.Err(
+			"INVALID_STATUS",
+			"Pemeriksaan sudah disetujui",
+			http.StatusConflict,
+		)
+	}
+
+	if status != StatusSubmitted {
+		return nil, response.Err(
+			"INVALID_STATUS",
+			"Tanda tangan kepala ruangan hanya dapat dilakukan setelah pemeriksaan dikirim",
+			http.StatusConflict,
+		)
+	}
+
+	// A kepala signature is only meaningful once the petugas signed.
+	if findSignatureByRole(ins.Signatures, "ANGGOTA") == nil {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Tanda tangan petugas pemeriksa belum tersedia",
+			http.StatusUnprocessableEntity,
+		)
 	}
 
 	imageDataURL = strings.TrimSpace(imageDataURL)
@@ -203,12 +232,12 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 		)
 	}
 	uid := actor.ID
-	title := actor.Title
+	title := strings.TrimSpace(actor.Title)
 	if title == "" {
 		title = auth.DefaultTitle(actor.Role)
 	}
 
-	return &model.Signature{
+	sig := &model.Signature{
 		InspectionID: id,
 		SignerUserID: &uid,
 		Role:         "KEPALA",
@@ -217,7 +246,88 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 		SignerTitle:  title,
 		ImageDataURL: imageDataURL,
 		SignedAt:     time.Now().UTC(),
-	}, nil
+	}
+
+	// Persist the signature so it can be shown and used for approval.
+	if err := s.Repo.UpsertSignature(sig); err != nil {
+		return nil, err
+	}
+
+	return sig, nil
+}
+
+// ApproveInspection marks a submitted inspection as approved.
+// Kepala PPI (and Super Admin, as oversight) can approve, and only
+// after both the petugas and the kepala signatures are stored.
+func (s *Service) ApproveInspection(actor *model.User, id int64) (*model.Inspection, error) {
+	if actor == nil {
+		return nil, response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
+
+	if !auth.IsKepala(actor.Role) && !auth.IsAdmin(actor.Role) {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya kepala PPI yang dapat menyetujui pemeriksaan",
+			http.StatusForbidden,
+		)
+	}
+
+	if id <= 0 {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"ID pemeriksaan tidak valid",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	ins, err := s.getInspectionForActor(actor, id)
+	if err != nil {
+		return nil, err
+	}
+
+	status := strings.ToUpper(strings.TrimSpace(ins.Status))
+
+	if status == StatusApproved {
+		return nil, response.Err(
+			"INVALID_STATUS",
+			"Pemeriksaan sudah disetujui",
+			http.StatusConflict,
+		)
+	}
+
+	if status != StatusSubmitted {
+		return nil, response.Err(
+			"INVALID_STATUS",
+			"Pemeriksaan hanya dapat disetujui setelah dikirim oleh petugas",
+			http.StatusConflict,
+		)
+	}
+
+	if findSignatureByRole(ins.Signatures, "ANGGOTA") == nil {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Tanda tangan petugas pemeriksa belum tersedia",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	if findSignatureByRole(ins.Signatures, "KEPALA") == nil {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Tanda tangan kepala ruangan belum tersedia",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	if err := s.Repo.ApproveInspection(ins.ID); err != nil {
+		return nil, err
+	}
+
+	return s.Repo.GetInspection(ins.ID)
 }
 
 func (s *Service) AddAnggotaSignature(actor *model.User, imageDataURL string, id int64) (*model.Signature, error) {
@@ -248,14 +358,28 @@ func (s *Service) AddAnggotaSignature(actor *model.User, imageDataURL string, id
 			http.StatusForbidden,
 		)
 	}
-	// Only an editable draft can receive or update this signature.
-	if ins.Status != StatusOpen {
+
+	status := strings.ToUpper(strings.TrimSpace(ins.Status))
+
+	// Drafts can be signed (and re-signed). A SUBMITTED inspection may
+	// still receive a missing petugas signature so older records that
+	// were sent without one can be completed. Final records are locked.
+	if status != StatusOpen && status != StatusSubmitted {
 		return nil, response.Err(
 			"INVALID_STATUS",
-			"Tanda tangan hanya dapat disimpan pada draft pemeriksaan",
+			"Tanda tangan hanya dapat disimpan selama pemeriksaan belum disetujui",
 			http.StatusConflict,
 		)
 	}
+
+	if status == StatusSubmitted && findSignatureByRole(ins.Signatures, "ANGGOTA") != nil {
+		return nil, response.Err(
+			"INVALID_STATUS",
+			"Tanda tangan petugas sudah tersimpan",
+			http.StatusConflict,
+		)
+	}
+
 	imageDataURL = strings.TrimSpace(imageDataURL)
 	if !validSignatureImage(imageDataURL) {
 		return nil, response.Err(
@@ -782,4 +906,90 @@ func (s *Service) UpdateInspectionNotes(actor *model.User, inspectionID int64, n
 		inspectionID,
 		strings.TrimSpace(notes),
 	)
+}
+
+func (s *Service) SubmitInspections(actor *model.User, id int64) (*model.Inspection, error) {
+	if actor == nil {
+		return nil, response.Err(
+			"UNAUTHENTICATED",
+			"User tidak ditemukan",
+			http.StatusUnauthorized,
+		)
+	}
+
+	if id <= 0 {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"ID pemeriksaan tidak valid",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	ins, err := s.getInspectionForActor(actor, id)
+	if err != nil {
+		return nil, err
+	}
+	if ins == nil {
+		return nil, response.Err(
+			"NOT_FOUND",
+			"Pemeriksaan tidak ditemukan",
+			http.StatusNotFound,
+		)
+	}
+	// Only the assigned inspector can submit.
+	if ins.InspectorID != actor.ID {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya petugas pemeriksa yang ditugaskan dapat mengirim pemeriksaan",
+			http.StatusForbidden,
+		)
+	}
+	// Only OPEN inspections can be submitted.
+	if ins.Status != StatusOpen {
+		return nil, response.Err(
+			"INVALID_STATUS",
+			"Pemeriksaan hanya dapat dikirim ketika berstatus OPEN",
+			http.StatusConflict,
+		)
+	}
+	// Get the previously saved Anggota signature.
+	sign := findSignatureByRole(ins.Signatures, "ANGGOTA")
+	if err != nil {
+		return nil, err
+	}
+
+	// Check whether a signature exists.
+	if sign == nil {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Tanda tangan Anggota wajib diisi sebelum pemeriksaan dikirim",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	// Ensure the signature belongs to the assigned inspector.
+	if sign.SignerUserID == nil || *sign.SignerUserID != actor.ID {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Tanda tangan tidak sesuai dengan petugas pemeriksa",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	// Validate the previously saved signature image.
+	if !validSignatureImage(sign.ImageDataURL) {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Tanda tangan tidak valid atau kosong",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	// Update inspection status through repository.
+	if err := s.Repo.SubmitInspection(actor, sign); err != nil {
+		return nil, err
+	}
+
+	// Return updated inspection.
+	return s.Repo.GetInspection(id)
 }

@@ -1,13 +1,13 @@
 import { requireAuth, api } from "../api.js";
 import { mountShell, toast } from "../components/shell.js";
-import { escapeHtml, formatDate, statusBadge } from "../utils/format.js";
+import { escapeHtml, formatMonth, statusBadge } from "../utils/format.js";
 import { btnSecondary, btnSm, tableWrap, empty } from "../ui.js";
 
 async function main() {
   const user = await requireAuth();
   if (!user) return;
 
-  await mountShell("history.html");
+  await mountShell("latest.html");
 
   const table = document.getElementById("table");
   const filterResult = document.getElementById("filter-result");
@@ -41,10 +41,10 @@ async function main() {
           <table class="data" style="border:none">
             <thead>
               <tr>
-                <th>Tanggal</th>
+                <th class="hide-sm">Tanggal</th>
                 <th>Ruangan</th>
                 <th>Hasil</th>
-                <th>Pemeriksa</th>
+                <th class="hide-sm">Pemeriksa</th>
                 <th></th>
               </tr>
             </thead>
@@ -63,19 +63,20 @@ async function main() {
 
                        return `
             <tr>
-              <td>
-                ${formatDate(inspection.inspection_month)}
+              <td class="hide-sm">
+                ${formatMonth(inspection.inspection_month)}
               </td>
 
               <td>
-                ${escapeHtml(roomName)}
+                <span class="cell-title">${escapeHtml(roomName)}</span>
+                <small class="cell-sub">${formatMonth(inspection.inspection_month)}</small>
               </td>
 
               <td>
                 ${statusBadge(status)}
               </td>
 
-              <td>
+              <td class="hide-sm">
                 ${escapeHtml(inspectorName)}
               </td>
 
@@ -91,13 +92,7 @@ async function main() {
           `;
                      })
                      .join("")
-                 : `<tr><td colspan="5" class="${empty}">Tidak ada riwayat pemeriksaan</td></tr>``
-                      <tr>
-                        <td colspan="5" class="${empty}">
-                          Tidak ada riwayat pemeriksaan.
-                        </td>
-                      </tr>
-                    `
+                 : `<tr><td colspan="5" class="${empty}">Tidak ada riwayat pemeriksaan</td></tr>`
              }
             </tbody>
           </table>

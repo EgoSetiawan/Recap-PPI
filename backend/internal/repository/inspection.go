@@ -616,6 +616,113 @@ func (r *Repo) UpdateInspectionNotes(inspectionID int64, notes string) error {
 	return nil
 }
 
-func (r *Repo) SubmitInspection(actor *model.User, sign *model.Signature) {
+func (r *Repo) SubmitInspection(actor *model.User, sign *model.Signature) error {
+	if actor == nil {
+		return errors.New("actor is required")
+	}
 
+	if sign == nil {
+		return errors.New("Anggota signature is required")
+	}
+
+	if sign.InspectionID <= 0 {
+		return errors.New("invalid inspection ID")
+	}
+
+	if sign.Role != "ANGGOTA" {
+		return errors.New("invalid signature role")
+	}
+
+	if sign.SignerUserID == nil || *sign.SignerUserID != actor.ID {
+		return errors.New("signature does not belong to the assigned inspector")
+	}
+
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	// Change OPEN to SUBMITTED only when the assigned inspector
+	// has a saved Anggota signature in the database.
+	result, err := tx.Exec(`
+		UPDATE inspections AS i
+		SET
+			status = 'SUBMITTED',
+			updated_at = NOW()
+		WHERE i.id = $1
+		  AND i.inspector_id = $2
+		  AND i.status = 'OPEN'
+		  AND EXISTS (
+			  SELECT 1
+			  FROM inspection_signatures AS s
+			  WHERE s.inspection_id = i.id
+			    AND s.role = 'ANGGOTA'
+			    AND s.signer_user_id = i.inspector_id
+			    AND NULLIF(BTRIM(s.image_data_url), '') IS NOT NULL
+		  )
+	`,
+		sign.InspectionID,
+		actor.ID,
+	)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != 1 {
+		return errors.New(
+			"inspection is not OPEN, inspector is unauthorized, or saved Anggota signature is missing",
+		)
+	}
+
+	return tx.Commit()
+}
+
+// ApproveInspection moves a SUBMITTED inspection to APPROVED.
+// It only succeeds when both signatures (ANGGOTA and KEPALA) exist.
+func (r *Repo) ApproveInspection(id int64) error {
+	result, err := r.DB.Exec(`
+		UPDATE inspections AS i
+		SET
+			status = 'APPROVED',
+			updated_at = NOW()
+		WHERE i.id = $1
+		  AND i.status = 'SUBMITTED'
+		  AND EXISTS (
+			  SELECT 1
+			  FROM inspection_signatures AS s
+			  WHERE s.inspection_id = i.id
+			    AND s.role = 'ANGGOTA'
+			    AND NULLIF(BTRIM(s.image_data_url), '') IS NOT NULL
+		  )
+		  AND EXISTS (
+			  SELECT 1
+			  FROM inspection_signatures AS s
+			  WHERE s.inspection_id = i.id
+			    AND s.role = 'KEPALA'
+			    AND NULLIF(BTRIM(s.image_data_url), '') IS NOT NULL
+		  )
+	`,
+		id,
+	)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != 1 {
+		return errors.New(
+			"inspection is not SUBMITTED or both signatures are not available",
+		)
+	}
+
+	return nil
 }

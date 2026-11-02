@@ -455,3 +455,54 @@ func (h *Handler) AddAnggotaSign(c *gin.Context) {
 
 	response.OK(c, sig, "Tanda tangan Anggota berhasil disimpan")
 }
+
+func (h *Handler) SumbitHandler(c *gin.Context) {
+	id, err := parseID(c, "id")
+	if err != nil {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"Invalid id",
+			http.StatusUnprocessableEntity,
+		)
+		return
+	}
+
+	inspection, err := h.Svc.SubmitInspections(middleware.CurrentUser(c), id)
+
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.OK(
+		c,
+		inspection,
+		"Pemeriksaan berhasil dikirim",
+	)
+}
+
+func (h *Handler) ApproveInspection(c *gin.Context) {
+	id, err := parseID(c, "id")
+	if err != nil || id <= 0 {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"Invalid id",
+			http.StatusUnprocessableEntity,
+		)
+		return
+	}
+
+	inspection, err := h.Svc.ApproveInspection(middleware.CurrentUser(c), id)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.OK(
+		c,
+		inspection,
+		"Pemeriksaan berhasil disetujui",
+	)
+}

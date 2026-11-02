@@ -1,8 +1,18 @@
 import { requireAuth, api, hasPermission, downloadInspectionPdf } from "../api.js";
 
-import { mountShell, toast } from "../components/shell.js";
+import { confirmDialog, mountShell, toast } from "../components/shell.js";
 
-import { qs, escapeHtml, formatDate, statusBadge } from "../utils/format.js";
+import {
+  escapeHtml,
+  formatDate,
+  formatMonth,
+  isAdminRole,
+  isKepalaRole,
+  normalizeRole,
+  qs,
+  signatureByRole,
+  statusBadge,
+} from "../utils/format.js";
 
 import {
   btn,
@@ -15,6 +25,12 @@ import {
 } from "../ui.js";
 
 import { SignaturePad } from "../signature.js";
+
+const STEP_CHECK_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="m5 12.5 4.5 4.5L19 7" />
+  </svg>
+`;
 
 // ==================================================
 // SIGNATURE DISPLAY
@@ -36,7 +52,8 @@ function sigBlock(title, sig) {
       : "";
 
   return `
-    <div class="sig-card">
+    <div class="sig-card is-signed">
+      <div class="sig-state">Ditandatangani</div>
       <div class="sig-label">${escapeHtml(title)}</div>
 
       ${
@@ -44,7 +61,7 @@ function sigBlock(title, sig) {
           ? `
             <img
               class="sig-image"
-              src="${src}"
+              src="${escapeHtml(src)}"
               alt="Tanda tangan ${escapeHtml(title)}"
             />
           `
@@ -63,6 +80,167 @@ function sigBlock(title, sig) {
       </div>
     </div>
   `;
+}
+
+// ==================================================
+// REUSABLE SIGNATURE MODAL
+// ==================================================
+
+function mountSignatureModal({
+  prefix,
+  buttonId,
+  title,
+  endpoint,
+  successMessage,
+  errorMessage,
+  inspectionId,
+}) {
+  const openButton = document.getElementById(buttonId);
+
+  if (!openButton) return;
+
+  const modalId = `${prefix}-sign-modal`;
+  const titleId = `${prefix}-sign-title`;
+  const rootId = `${prefix}-signature-root`;
+  const closeId = `btn-close-${prefix}-sign`;
+  const cancelId = `btn-cancel-${prefix}-sign`;
+  const saveId = `btn-save-${prefix}-sign`;
+
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <div
+        id="${modalId}"
+        class="kepala-sign-modal"
+        aria-hidden="true"
+      >
+        <div
+          class="kepala-sign-modal-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="${titleId}"
+        >
+          <div class="kepala-sign-modal-header">
+            <div>
+              <h2 id="${titleId}">
+                ${escapeHtml(title)}
+              </h2>
+
+              <p class="page-meta mt-1">
+                Pemeriksaan #${escapeHtml(String(inspectionId))}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              id="${closeId}"
+              class="kepala-sign-modal-close"
+              aria-label="Tutup"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="kepala-sign-modal-body">
+            <div id="${rootId}"></div>
+          </div>
+
+          <div class="kepala-sign-modal-footer">
+            <button
+              type="button"
+              class="${btnSecondary}"
+              id="${cancelId}"
+            >
+              Batal
+            </button>
+
+            <button
+              type="button"
+              class="${btn}"
+              id="${saveId}"
+            >
+              Simpan Tanda Tangan
+            </button>
+          </div>
+        </div>
+      </div>
+    `,
+  );
+
+  const modal = document.getElementById(modalId);
+  const closeButton = document.getElementById(closeId);
+  const cancelButton = document.getElementById(cancelId);
+  const saveButton = document.getElementById(saveId);
+  const signatureRoot = document.getElementById(rootId);
+
+  const signaturePad = new SignaturePad(signatureRoot);
+
+  function openModal() {
+    signaturePad.clear();
+
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeModal() {
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+
+    signaturePad.clear();
+  }
+
+  openButton.addEventListener("click", openModal);
+
+  closeButton?.addEventListener("click", closeModal);
+  cancelButton?.addEventListener("click", closeModal);
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && modal.classList.contains("is-open")) {
+      closeModal();
+    }
+  });
+
+  saveButton?.addEventListener("click", async () => {
+    if (signaturePad.isEmpty()) {
+      toast("Tanda tangan wajib diisi", "error");
+      return;
+    }
+
+    const payload = await signaturePad.getPayload();
+
+    if (!payload || !payload.image_data_url) {
+      toast("Tanda tangan tidak valid", "error");
+      return;
+    }
+
+    saveButton.disabled = true;
+    saveButton.textContent = "Menyimpan...";
+
+    try {
+      await api(endpoint, {
+        method: "POST",
+        body: payload,
+      });
+
+      toast(successMessage, "success");
+
+      closeModal();
+
+      // Reload to refresh signature information and buttons.
+      window.location.reload();
+    } catch (error) {
+      toast(error.message || errorMessage, "error");
+    } finally {
+      saveButton.disabled = false;
+      saveButton.textContent = "Simpan Tanda Tangan";
+    }
+  });
 }
 
 // ==================================================
@@ -96,17 +274,20 @@ function showError(message) {
 // DAILY CHECKLIST AND MONTHLY CALENDAR
 // ==================================================
 
-async function setupDailyChecklist(inspection) {
+async function setupDailyChecklist(inspection, options = {}) {
   const dateInput = document.getElementById("answer-date");
   const dateList = document.getElementById("daily-date-list");
   const checklistContainer = document.getElementById("daily-checklist");
   const progress = document.getElementById("day-progress");
   const saveButton = document.getElementById("btn-save-day");
 
-  const isEditable =
+  const isOpen =
     String(inspection.status || "")
       .trim()
       .toUpperCase() === "OPEN";
+
+  // Only the assigned petugas (or an admin) may edit an OPEN draft.
+  const isEditable = isOpen && options.canEdit === true;
 
   if (!dateInput || !dateList || !checklistContainer || !progress) {
     throw new Error("Elemen pemeriksaan harian tidak ditemukan.");
@@ -151,19 +332,7 @@ async function setupDailyChecklist(inspection) {
    *
    * Map key: YYYY-MM-DD
    *
-   * Value:
-   * {
-   *   answer_date: "2026-10-02",
-   *   items: [
-   *     {
-   *       checklist_item_id: 1,
-   *       status: "GOOD",
-   *       notes: "..."
-   *     }
-   *   ]
-   * }
-   *
-   * Drafts only stay in memory until saved or the page is closed.
+   * Drafts stay in memory until saved or the page is closed.
    */
   const draftDays = new Map();
 
@@ -237,9 +406,7 @@ async function setupDailyChecklist(inspection) {
 
   /*
    * Capture what is currently visible.
-   *
    * This updates an existing draft before changing dates.
-   * It does not create a draft for an untouched date.
    */
   function captureVisibleDraft() {
     if (!isEditable) return;
@@ -454,7 +621,6 @@ async function setupDailyChecklist(inspection) {
 
     dateList.querySelectorAll("[data-edit-date]").forEach((button) => {
       button.addEventListener("click", () => {
-        // Preserve current edits before switching days.
         captureVisibleDraft();
 
         dateInput.value = button.dataset.editDate;
@@ -488,18 +654,21 @@ async function setupDailyChecklist(inspection) {
 
     const p = getProgress(selectedDate);
 
-    progress.textContent =
-      `${p.completed} dari ${p.total} item dinilai untuk ` + `${selectedDate}.`;
+    progress.textContent = `${p.completed} dari ${p.total} item dinilai untuk ${selectedDate}.`;
 
     checklistContainer.innerHTML = `
       <div class="${sectionBody}" style="padding:0">
         <div class="table-wrap">
-          <table class="data" style="border:none">
+          <table class="data checklist-table" style="border:none">
+            <colgroup>
+              <col style="width:70%">
+              <col style="width:30%">
+            </colgroup>
+
             <thead>
               <tr>
                 <th>Item</th>
                 <th>Penilaian</th>
-                <th>Catatan</th>
               </tr>
             </thead>
 
@@ -509,7 +678,6 @@ async function setupDailyChecklist(inspection) {
                   ? items
                       .map((item) => {
                         const answer = answerMap.get(Number(item.id));
-
                         const currentStatus = answer?.status || "";
 
                         return `
@@ -522,7 +690,7 @@ async function setupDailyChecklist(inspection) {
                               ${
                                 item.description
                                   ? `
-                                    <br />
+                                    <br>
                                     <small>
                                       ${escapeHtml(item.description)}
                                     </small>
@@ -538,7 +706,7 @@ async function setupDailyChecklist(inspection) {
                                     <select
                                       data-status
                                       aria-label="Penilaian ${escapeHtml(item.name || "")}"
-                                      style="min-width:140px"
+                                      class="checklist-rating"
                                     >
                                       <option
                                         value=""
@@ -562,32 +730,13 @@ async function setupDailyChecklist(inspection) {
                                   `
                               }
                             </td>
-
-                            <td>
-                              ${
-                                isEditable
-                                  ? `
-                                    <textarea
-                                      data-notes
-                                      rows="2"
-                                      aria-label="Catatan ${escapeHtml(item.name || "")}"
-                                      placeholder="Catatan temuan..."
-                                    >${escapeHtml(answer?.notes || "")}</textarea>
-                                  `
-                                  : `
-                                    <span>
-                                      ${escapeHtml(answer?.notes || "—")}
-                                    </span>
-                                  `
-                              }
-                            </td>
                           </tr>
                         `;
                       })
                       .join("")
                   : `
                     <tr>
-                      <td colspan="3" class="${empty}">
+                      <td colspan="2" class="${empty}">
                         Tidak ada item checklist.
                       </td>
                     </tr>
@@ -635,8 +784,7 @@ async function setupDailyChecklist(inspection) {
   function renderDayProgressOnly() {
     const p = getProgress(dateInput.value);
 
-    progress.textContent =
-      `${p.completed} dari ${p.total} item dinilai untuk ` + `${dateInput.value}.`;
+    progress.textContent = `${p.completed} dari ${p.total} item dinilai untuk ${dateInput.value}.`;
 
     if (saveButton) {
       saveButton.textContent = draftDays.size
@@ -719,7 +867,6 @@ async function setupDailyChecklist(inspection) {
             ? refreshed.checklist
             : [];
 
-      // Clear temporary drafts only after the save succeeded.
       draftDays.clear();
 
       renderDateList();
@@ -729,7 +876,6 @@ async function setupDailyChecklist(inspection) {
 
       return true;
     } catch (error) {
-      // Keep the drafts if saving fails so the user can retry.
       toast(error.message || "Gagal menyimpan semua perubahan.", "error");
 
       return false;
@@ -798,15 +944,154 @@ async function main() {
   const room = insp.room || {};
   const failed = insp.result === "FAILED";
 
+  // Human friendly subtitle in the page header.
+  const subtitleParts = [
+    room.name,
+    room.code ? `(${room.code})` : "",
+    formatMonth(insp.inspection_month),
+  ].filter(Boolean);
+
+  const subtitle = document.getElementById("detail-sub");
+
+  if (subtitle && subtitleParts.length) {
+    subtitle.textContent = subtitleParts.join(" · ");
+  }
+
   const canManageInspection = hasPermission("inspections.manage");
 
-  const canSignAsKepalaRuangan =
-    user.role === "KEPALA_RUANGAN" &&
-    hasPermission("inspections.sign") &&
-    !!insp.inspector_signature &&
-    !insp.kepala_ruangan_signature;
+  // --------------------------------------------------
+  // ROLE AND SIGNATURE CHECKS
+  // --------------------------------------------------
 
-  // Header buttons.
+  const currentRole = normalizeRole(user.role);
+
+  const inspectionStatus = String(insp.status || "")
+    .trim()
+    .toUpperCase();
+
+  const isKepala = isKepalaRole(currentRole);
+
+  const isAdmin = isAdminRole(currentRole);
+
+  const isOpenInspection = inspectionStatus === "OPEN";
+
+  const isSubmittedInspection = inspectionStatus === "SUBMITTED";
+
+  const isApprovedInspection = inspectionStatus === "APPROVED";
+
+  const isRejectedInspection = inspectionStatus === "REJECTED";
+
+  // Highlight the nav entry that matches the current inspection state.
+  const navTarget = isOpenInspection ? "open-inspection.html" : "latest.html";
+
+  document.querySelectorAll(".sidebar a.nav-link").forEach((link) => {
+    const active = link.getAttribute("href") === navTarget;
+
+    link.classList.toggle("active", active);
+
+    if (active) {
+      link.setAttribute("aria-current", "page");
+    } else {
+      link.removeAttribute("aria-current");
+    }
+  });
+
+  // Signature records can come from `signatures` (API) or the legacy
+  // single-signature fields used by older builds.
+  const signatures = Array.isArray(insp.signatures) ? insp.signatures : [];
+
+  const anggotaSignature =
+    signatureByRole(signatures, "ANGGOTA") || insp.inspector_signature || null;
+
+  const kepalaSignature =
+    signatureByRole(signatures, "KEPALA") || insp.kepala_ruangan_signature || null;
+
+  const hasAnggotaSignature = Boolean(anggotaSignature);
+
+  const hasKepalaSignature = Boolean(kepalaSignature);
+
+  const isAssignedInspector = Number(user.id) > 0 && Number(insp.inspector_id) === Number(user.id);
+
+  // Petugas: the assigned inspector signs the petugas slot. A kepala never
+  // fills that slot, so one person cannot sign both roles. Drafts can be
+  // signed/re-signed; a SUBMITTED record without a petugas signature can
+  // still be completed (older data), final records are locked.
+  const canSignAsAnggota =
+    (isOpenInspection || isSubmittedInspection) &&
+    isAssignedInspector &&
+    !isKepala &&
+    !hasAnggotaSignature;
+
+  // Anggota: the signed draft can be sent to the kepala for review.
+  // Only the assigned inspector can submit (the API enforces the same).
+  const canSubmitForReview = isOpenInspection && isAssignedInspector && hasAnggotaSignature;
+
+  // Kepala: signs the review stage only, and only once.
+  const canSignAsKepalaRuangan =
+    isKepala && isSubmittedInspection && hasAnggotaSignature && !hasKepalaSignature;
+
+  // Kepala (or admin oversight): final approval after both signatures.
+  const canApproveInspection =
+    (isKepala || isAdmin) && isSubmittedInspection && hasAnggotaSignature && hasKepalaSignature;
+
+  const canEditChecklist = isOpenInspection && (isAssignedInspector || isAdmin);
+
+  // Workflow narrative shown next to the action buttons.
+  let workflowNote = "";
+
+  if (isRejectedInspection) {
+    workflowNote = "Pemeriksaan ini ditolak. Hubungi kepala PPI untuk tindak lanjut.";
+  } else if (isApprovedInspection) {
+    workflowNote = "Pemeriksaan sudah disetujui dan menjadi arsip final.";
+  } else if (isOpenInspection && !hasAnggotaSignature) {
+    workflowNote = isAssignedInspector
+      ? "Tanda tangani pemeriksaan sebagai petugas pemeriksa, lalu kirim untuk direview kepala ruangan."
+      : "Menunggu tanda tangan petugas pemeriksa sebelum dapat dikirim.";
+  } else if (isOpenInspection) {
+    workflowNote = isAssignedInspector
+      ? "Tanda tangan petugas sudah tersimpan. Kirim pemeriksaan agar kepala ruangan dapat menandatangani dan menyetujui."
+      : "Petugas sudah menandatangani. Menunggu pemeriksaan dikirim untuk review.";
+  } else if (isSubmittedInspection && !hasAnggotaSignature) {
+    workflowNote = isAssignedInspector
+      ? "Pemeriksaan sudah dikirim tanpa tanda tangan petugas. Lengkapi tanda tangan Anda agar kepala ruangan dapat menandatangani."
+      : "Pemeriksaan sudah dikirim tanpa tanda tangan petugas. Menunggu petugas melengkapi tanda tangan.";
+  } else if (isSubmittedInspection && !hasKepalaSignature) {
+    workflowNote = isKepala
+      ? "Tanda tangani sebagai kepala ruangan, lalu setujui pemeriksaan ini."
+      : "Menunggu tanda tangan kepala ruangan.";
+  } else if (isSubmittedInspection) {
+    workflowNote =
+      isKepala || isAdmin
+        ? "Kedua tanda tangan lengkap. Setujui pemeriksaan untuk menyelesaikan proses."
+        : "Kedua tanda tangan lengkap. Menunggu persetujuan kepala PPI.";
+  }
+
+  // Five-step progress: dibuat -> petugas -> dikirim -> kepala -> disetujui.
+  const workflowSteps = [
+    { label: "Dibuat", done: true },
+    { label: "Petugas", done: hasAnggotaSignature },
+    {
+      label: "Dikirim",
+      done: isSubmittedInspection || isApprovedInspection,
+    },
+    { label: "Kepala", done: hasKepalaSignature },
+    { label: "Disetujui", done: isApprovedInspection },
+  ];
+
+  const currentStepIndex = workflowSteps.findIndex((step) => !step.done);
+
+  const workflowBadge = isRejectedInspection
+    ? `<span class="badge badge-danger">Ditolak</span>`
+    : isApprovedInspection
+      ? `<span class="badge badge-good">Disetujui</span>`
+      : isSubmittedInspection
+        ? `<span class="badge badge-info">Menunggu Review</span>`
+        : `<span class="badge badge-warn">Draft</span>`;
+
+  // --------------------------------------------------
+  // HEADER BUTTONS
+  // --------------------------------------------------
+
   document.getElementById("header-actions").innerHTML = `
     <button
       type="button"
@@ -839,12 +1124,15 @@ async function main() {
     }
   });
 
-  // Delete inspection.
+  // --------------------------------------------------
+  // DELETE INSPECTION
+  // --------------------------------------------------
+
   const btnDelete = document.getElementById("btn-delete");
 
   if (btnDelete) {
     btnDelete.addEventListener("click", async () => {
-      const confirmed = window.confirm(
+      const confirmed = await confirmDialog(
         "Apakah Anda yakin ingin menghapus pemeriksaan ini? Data akan dihapus secara soft delete.",
       );
 
@@ -872,24 +1160,15 @@ async function main() {
     });
   }
 
-  const monthNames = [
-    "Januari",
-    "Februari",
-    "Maret",
-    "April",
-    "Mei",
-    "Juni",
-    "Juli",
-    "Agustus",
-    "September",
-    "Oktober",
-    "November",
-    "Desember",
-  ];
+  // --------------------------------------------------
+  // MONTH NAME
+  // --------------------------------------------------
 
-  const monthNumber = insp.inspection_month?.match(/^\d{4}-(\d{2})-/)?.[1];
+  const monthName = formatMonth(insp.inspection_month);
 
-  const monthName = monthNumber ? monthNames[Number(monthNumber) - 1] || "—" : "—";
+  // --------------------------------------------------
+  // INSPECTION DETAIL HTML
+  // --------------------------------------------------
 
   document.getElementById("detail-root").innerHTML = `
     ${
@@ -952,7 +1231,7 @@ async function main() {
       <div class="${sectionBody}">
         <p class="page-meta">
           ${
-            String(insp.status || "").toUpperCase() === "OPEN"
+            isOpenInspection
               ? "Pilih tanggal, edit checklist, kemudian simpan semua perubahan."
               : "Pemeriksaan ini hanya dapat dilihat karena statusnya bukan OPEN."
           }
@@ -998,26 +1277,80 @@ async function main() {
 
     <div class="${section}" style="margin-top:12px">
       <div class="${sectionHeader}">
-        Tanda Tangan
+        <span class="section-title">Tanda Tangan &amp; Persetujuan</span>
+        ${workflowBadge}
       </div>
 
       <div class="${sectionBody}">
+        <ol class="approval-steps">
+          ${workflowSteps
+            .map(
+              (step, index) => `
+                <li
+                  class="approval-step${
+                    step.done ? " is-done" : index === currentStepIndex ? " is-current" : ""
+                  }"
+                >
+                  <span class="approval-step-dot">
+                    ${step.done ? STEP_CHECK_ICON : index + 1}
+                  </span>
+                  <span class="approval-step-label">${escapeHtml(step.label)}</span>
+                </li>
+              `,
+            )
+            .join("")}
+        </ol>
+
         <div class="sig-row">
-          ${sigBlock("Pemeriksa", insp.inspector_signature)}
-          ${sigBlock("Kepala Ruangan", insp.kepala_ruangan_signature)}
+          ${sigBlock("Pemeriksa", anggotaSignature)}
+          ${sigBlock("Kepala Ruangan", kepalaSignature)}
         </div>
 
+        ${workflowNote ? `<p class="approval-note">${escapeHtml(workflowNote)}</p>` : ""}
+
         ${
-          canSignAsKepalaRuangan
+          canSignAsAnggota || canSubmitForReview || canSignAsKepalaRuangan || canApproveInspection
             ? `
-              <div style="margin-top:16px">
-                <button
-                  type="button"
-                  class="${btn}"
-                  id="btn-sign-kepala"
-                >
-                  Tanda Tangan sebagai Kepala Ruangan
-                </button>
+              <div class="approval-actions">
+                ${
+                  canSignAsAnggota
+                    ? `
+                      <button type="button" class="${btn}" id="btn-sign-anggota">
+                        Tanda Tangan Petugas
+                      </button>
+                    `
+                    : ""
+                }
+
+                ${
+                  canSubmitForReview
+                    ? `
+                      <button type="button" class="${btn}" id="btn-submit-review">
+                        Kirim untuk Review
+                      </button>
+                    `
+                    : ""
+                }
+
+                ${
+                  canSignAsKepalaRuangan
+                    ? `
+                      <button type="button" class="${btn}" id="btn-sign-kepala">
+                        Tanda Tangan Kepala Ruangan
+                      </button>
+                    `
+                    : ""
+                }
+
+                ${
+                  canApproveInspection
+                    ? `
+                      <button type="button" class="${btn}" id="btn-approve">
+                        Setujui Pemeriksaan
+                      </button>
+                    `
+                    : ""
+                }
               </div>
             `
             : ""
@@ -1026,147 +1359,104 @@ async function main() {
     </div>
   `;
 
-  // Initialize calendar and daily checklist.
-  await setupDailyChecklist(insp);
+  // --------------------------------------------------
+  // INITIALIZE DAILY CHECKLIST
+  // --------------------------------------------------
+
+  await setupDailyChecklist(insp, { canEdit: canEditChecklist });
+
+  // ==================================================
+  // ANGGOTA SIGNATURE MODAL
+  // ==================================================
+
+  if (canSignAsAnggota) {
+    mountSignatureModal({
+      prefix: "anggota",
+      buttonId: "btn-sign-anggota",
+      title: "Tanda Tangan Petugas Pemeriksa",
+      endpoint: `/inspections/${insp.id}/signatures/anggota`,
+      successMessage: "Tanda tangan petugas berhasil disimpan",
+      errorMessage: "Gagal menyimpan tanda tangan petugas",
+      inspectionId: insp.id,
+    });
+  }
 
   // ==================================================
   // KEPALA RUANGAN SIGNATURE MODAL
   // ==================================================
 
   if (canSignAsKepalaRuangan) {
-    document.body.insertAdjacentHTML(
-      "beforeend",
-      `
-        <div
-          id="kepala-sign-modal"
-          class="kepala-sign-modal"
-          aria-hidden="true"
-        >
-          <div
-            class="kepala-sign-modal-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="kepala-sign-title"
-          >
-            <div class="kepala-sign-modal-header">
-              <div>
-                <h2 id="kepala-sign-title">
-                  Tanda Tangan Kepala Ruangan
-                </h2>
-
-                <p class="page-meta mt-1">
-                  Pemeriksaan #${escapeHtml(String(insp.id))}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                id="btn-close-kepala-sign"
-                class="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100"
-                aria-label="Tutup"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div class="kepala-signature-modal-body">
-              <div id="kepala-signature-root"></div>
-            </div>
-
-            <div class="flex justify-end gap-2 border-t px-6 py-4">
-              <button
-                type="button"
-                class="${btnSecondary}"
-                id="btn-cancel-kepala-sign"
-              >
-                Batal
-              </button>
-
-              <button
-                type="button"
-                class="${btn}"
-                id="btn-save-kepala-sign"
-              >
-                Simpan Tanda Tangan
-              </button>
-            </div>
-          </div>
-        </div>
-      `,
-    );
-
-    const modal = document.getElementById("kepala-sign-modal");
-    const openBtn = document.getElementById("btn-sign-kepala");
-    const closeBtn = document.getElementById("btn-close-kepala-sign");
-    const cancelBtn = document.getElementById("btn-cancel-kepala-sign");
-    const saveBtn = document.getElementById("btn-save-kepala-sign");
-    const signatureRoot = document.getElementById("kepala-signature-root");
-
-    const kepalaSigPad = new SignaturePad(signatureRoot);
-
-    function openKepalaSignModal() {
-      kepalaSigPad.clear();
-      modal.classList.add("is-open");
-      modal.setAttribute("aria-hidden", "false");
-    }
-
-    function closeKepalaSignModal() {
-      modal.classList.remove("is-open");
-      modal.setAttribute("aria-hidden", "true");
-      kepalaSigPad.clear();
-    }
-
-    openBtn?.addEventListener("click", openKepalaSignModal);
-    closeBtn?.addEventListener("click", closeKepalaSignModal);
-    cancelBtn?.addEventListener("click", closeKepalaSignModal);
-
-    modal.addEventListener("click", (event) => {
-      if (event.target === modal) {
-        closeKepalaSignModal();
-      }
-    });
-
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && modal.classList.contains("is-open")) {
-        closeKepalaSignModal();
-      }
-    });
-
-    saveBtn?.addEventListener("click", async () => {
-      if (kepalaSigPad.isEmpty()) {
-        toast("Tanda tangan wajib diisi", "error");
-        return;
-      }
-
-      const payload = await kepalaSigPad.getPayload();
-
-      if (!payload) {
-        toast("Tanda tangan tidak valid", "error");
-        return;
-      }
-
-      saveBtn.disabled = true;
-      saveBtn.textContent = "Menyimpan...";
-
-      try {
-        await api(`/inspections/${insp.id}/signature/kepala-ruangan`, {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-
-        toast("Tanda tangan Kepala Ruangan berhasil disimpan", "success");
-
-        closeKepalaSignModal();
-        window.location.reload();
-      } catch (error) {
-        toast(error.message || "Gagal menyimpan tanda tangan", "error");
-      } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = "Simpan Tanda Tangan";
-      }
+    mountSignatureModal({
+      prefix: "kepala",
+      buttonId: "btn-sign-kepala",
+      title: "Tanda Tangan Kepala Ruangan",
+      endpoint: `/inspections/${insp.id}/signature/kepala-ruangan`,
+      successMessage: "Tanda tangan kepala ruangan berhasil disimpan",
+      errorMessage: "Gagal menyimpan tanda tangan kepala ruangan",
+      inspectionId: insp.id,
     });
   }
+
+  // ==================================================
+  // SUBMIT FOR REVIEW (petugas)
+  // ==================================================
+
+  const submitButton = document.getElementById("btn-submit-review");
+
+  submitButton?.addEventListener("click", async () => {
+    const confirmed = await confirmDialog(
+      "Kirim pemeriksaan ini untuk direview kepala ruangan? Checklist tidak dapat diubah setelah dikirim.",
+    );
+
+    if (!confirmed) return;
+
+    submitButton.disabled = true;
+    submitButton.textContent = "Mengirim...";
+
+    try {
+      await api(`/inspections/${insp.id}/submit-approval`, { method: "POST" });
+
+      toast("Pemeriksaan berhasil dikirim untuk review", "success");
+      window.location.reload();
+    } catch (error) {
+      toast(error.message || "Gagal mengirim pemeriksaan", "error");
+      submitButton.disabled = false;
+      submitButton.textContent = "Kirim untuk Review";
+    }
+  });
+
+  // ==================================================
+  // APPROVE (kepala ruangan / admin)
+  // ==================================================
+
+  const approveButton = document.getElementById("btn-approve");
+
+  approveButton?.addEventListener("click", async () => {
+    const confirmed = await confirmDialog(
+      "Setujui pemeriksaan ini? Setelah disetujui, pemeriksaan menjadi arsip final dan tidak dapat diubah lagi.",
+    );
+
+    if (!confirmed) return;
+
+    approveButton.disabled = true;
+    approveButton.textContent = "Menyetujui...";
+
+    try {
+      await api(`/inspections/${insp.id}/approve`, { method: "POST" });
+
+      toast("Pemeriksaan berhasil disetujui", "success");
+      window.location.reload();
+    } catch (error) {
+      toast(error.message || "Gagal menyetujui pemeriksaan", "error");
+      approveButton.disabled = false;
+      approveButton.textContent = "Setujui Pemeriksaan";
+    }
+  });
 }
+
+// ==================================================
+// START
+// ==================================================
 
 main().catch((error) => {
   console.error("Inspection detail error:", error);

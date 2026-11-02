@@ -1,7 +1,22 @@
 import { requireAuth, api } from "../api.js";
 import { mountShell, toast } from "../components/shell.js";
-import { escapeHtml, formatDate } from "../utils/format.js";
+import { escapeHtml, formatMonth } from "../utils/format.js";
 import { btn, btnSecondary, btnSm, tableWrap, empty, statCard, badge } from "../ui.js";
+
+const STAT_ICONS = {
+  rooms:
+    '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-4h6v4"/><path d="M9 9h.01M15 9h.01M9 13h.01M15 13h.01"/>',
+  inspections:
+    '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="m9 15 2 2 3.5-3.5"/>',
+  open: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  submitted:
+    '<path d="M4 5h16v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"/><path d="M4 6h16l-7 6a2 2 0 0 1-2 0z"/><path d="M9 22h6"/>',
+  approved: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
+};
+
+function statIcon(path) {
+  return `<span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg></span>`;
+}
 
 function inspectionStatusBadge(status) {
   const map = {
@@ -47,40 +62,71 @@ async function main() {
     const isAnggota = user.role === "ANGGOTA";
 
     // Subtitle
+    const today = new Intl.DateTimeFormat("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date());
+
+    const monthLabel = new Intl.DateTimeFormat("id-ID", {
+      month: "long",
+      year: "numeric",
+    }).format(new Date());
+
     document.getElementById("dash-subtitle").textContent = isAnggota
-      ? "Ringkasan ruangan dan pemeriksaan yang menjadi tanggung jawab Anda."
-      : "Monitoring ruangan dan pemeriksaan.";
+      ? `${today} — ringkasan ruangan dan pemeriksaan yang menjadi tanggung jawab Anda.`
+      : `${today} — monitoring ruangan dan pemeriksaan unit PPI.`;
 
     // Statistics
     const cards = [
       {
         label: "Total Ruangan",
         value: totals.rooms,
+        tone: "accent",
+        icon: STAT_ICONS.rooms,
+        hint: "Ruangan terdaftar",
       },
       {
-        label: "Pemeriksaan Bulan Ini",
+        label: "Pemeriksaan",
         value: totals.inspections_month,
+        tone: "",
+        icon: STAT_ICONS.inspections,
+        hint: monthLabel,
       },
       {
         label: "Open",
         value: totals.open,
+        tone: "warning",
+        icon: STAT_ICONS.open,
+        hint: "Belum selesai",
       },
       {
         label: "Menunggu Review",
         value: totals.submitted,
+        tone: "info",
+        icon: STAT_ICONS.submitted,
+        hint: "Perlu validasi kepala",
       },
       {
         label: "Disetujui",
         value: totals.approved,
+        tone: "success",
+        icon: STAT_ICONS.approved,
+        hint: "Selesai diverifikasi",
       },
     ];
 
     document.getElementById("stats").innerHTML = cards
       .map(
         (s) => `
-          <div class="${statCard}">
-            <div class="label">${escapeHtml(s.label)}</div>
-            <div class="value">${s.value ?? 0}</div>
+          <div class="${statCard}"${s.tone ? ` data-tone="${s.tone}"` : ""}>
+            ${statIcon(s.icon)}
+            <div class="stat-copy">
+              <div class="label">${escapeHtml(s.label)}</div>
+              <div class="value">${s.value ?? 0}</div>
+              <div class="stat-hint">${escapeHtml(s.hint)}</div>
+            </div>
           </div>
         `,
       )
@@ -103,7 +149,7 @@ async function main() {
         <table class="data" style="border:none">
           <thead>
             <tr>
-              <th>Bulan</th>
+              <th class="hide-sm">Bulan</th>
               <th>Ruangan</th>
               <th>Status</th>
               <th></th>
@@ -116,12 +162,13 @@ async function main() {
                 .map(
                   (i) => `
                     <tr>
-                      <td>
-                        ${formatDate(i.inspection_month)}
+                      <td class="hide-sm">
+                        ${formatMonth(i.inspection_month)}
                       </td>
 
                       <td>
-                        ${escapeHtml(i.room?.name || "-")}
+                        <span class="cell-title">${escapeHtml(i.room?.name || "-")}</span>
+                        <small class="cell-sub">${formatMonth(i.inspection_month)}</small>
                       </td>
 
                       <td>
@@ -163,7 +210,7 @@ async function main() {
       {
         key: "submitted",
         label: "Menunggu Review",
-        color: "",
+        color: "info",
       },
       {
         key: "approved",
@@ -190,7 +237,7 @@ async function main() {
 
             <div class="bar-track">
               <div
-                class="bar-fill"
+                class="bar-fill ${item.color}"
                 style="width:${percentage}%"
               ></div>
             </div>

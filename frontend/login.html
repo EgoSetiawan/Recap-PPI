@@ -11,56 +11,189 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="assets/css/app.css" />
-    <!-- <link rel="stylesheet" href="assets/css/daisyui.css" /> -->
+    <link rel="stylesheet" href="assets/css/theme.css" />
     <script src="assets/js/config.js"></script>
   </head>
   <body>
     <div class="login-page">
+      <!-- Brand / reassurance panel -->
+      <section class="login-hero" aria-label="Tentang aplikasi">
+        <div class="hero-brand">
+          <span class="brand-mark-icon">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3 4 6v6c0 4.4 3.4 8.4 8 9 4.6-.6 8-4.6 8-9V6l-8-3z" />
+              <path d="M12 9v6M9 12h6" />
+            </svg>
+          </span>
+          <div>
+            <div class="hero-eyebrow">RSU Dr. H. Koesnadi Bondowoso</div>
+            <strong class="hero-brand-name">Unit PPI</strong>
+          </div>
+        </div>
+
+        <div>
+          <h1>Kendali mutu PPI, <em>dalam satu layar.</em></h1>
+          <p>
+            Catat pemeriksaan ruangan, pantau temuan kritis, dan kumpulkan tanda tangan digital —
+            tanpa tumpukan kertas.
+          </p>
+
+          <ul class="hero-features">
+            <li>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M22 11.1V12a10 10 0 1 1-5.9-9.1" />
+                <path d="m9 11 3 3L22 4" />
+              </svg>
+              Checklist harian per ruangan dengan kalender bulanan.
+            </li>
+            <li>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M22 11.1V12a10 10 0 1 1-5.9-9.1" />
+                <path d="m9 11 3 3L22 4" />
+              </svg>
+              Tanda tangan petugas &amp; kepala ruangan langsung di perangkat.
+            </li>
+            <li>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M22 11.1V12a10 10 0 1 1-5.9-9.1" />
+                <path d="m9 11 3 3L22 4" />
+              </svg>
+              Laporan bulanan siap cetak dalam satu klik.
+            </li>
+          </ul>
+        </div>
+
+        <div class="hero-foot">
+          <span>© 2026 RSU Dr. H. Koesnadi</span>
+          <span aria-hidden="true">·</span>
+          <span>Pencegahan &amp; Pengendalian Infeksi</span>
+        </div>
+      </section>
+
+      <!-- Sign in -->
       <section class="login-panel">
         <div class="login-box">
+          <div class="login-mobile-brand">
+            <span class="brand-mark-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 3 4 6v6c0 4.4 3.4 8.4 8 9 4.6-.6 8-4.6 8-9V6l-8-3z" />
+                <path d="M12 9v6M9 12h6" />
+              </svg>
+            </span>
+            <span class="brand-name">Pemeriksaan Ruangan</span>
+          </div>
+
           <div class="system-name">RSU Dr. H. Koesnadi Bondowoso</div>
-          <h2>Pemeriksaan Ruangan</h2>
-          <p>Masuk untuk mengelola ruangan, pemeriksaan, dan laporan.</p>
+          <h2>Selamat datang kembali</h2>
+          <p>Masuk untuk mengelola ruangan, pemeriksaan, dan laporan PPI.</p>
+
           <div class="alert alert-info" style="font-size: 12px">
             Lingkungan development — data demo. Jangan gunakan untuk operasi produksi.
           </div>
+
           <form id="login-form">
-            <div class="form-group mb-3 flex min-w-0 flex-col gap-1">
-              <label for="username">Email or Username</label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                autocomplete="username"
-                placeholder="Enter your email or username"
-              />
+            <div class="form-group">
+              <label for="username">Email atau Username</label>
+              <div class="login-input">
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  required
+                  autocomplete="username"
+                  placeholder="nama@rsu-koesnadi.go.id"
+                />
+              </div>
             </div>
-            <div class="form-group mb-3 flex min-w-0 flex-col gap-1">
-              <label for="password">Password *</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                autocomplete="current-password"
-              />
+
+            <div class="form-group">
+              <label for="password">Password</label>
+              <div class="login-input">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  autocomplete="current-password"
+                  placeholder="Masukkan password"
+                />
+                <button
+                  type="button"
+                  class="password-toggle"
+                  id="toggle-password"
+                  aria-label="Tampilkan password"
+                  aria-pressed="false"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                </button>
+              </div>
             </div>
-            <button
-              class="btn inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary px-3.5 py-2 text-[13px] leading-snug font-semibold whitespace-nowrap text-white no-underline hover:bg-primary-hover hover:text-white hover:no-underline disabled:cursor-not-allowed disabled:opacity-55"
-              type="submit"
-              style="width: 100%"
-            >
-              Masuk
-            </button>
+
+            <button class="btn" type="submit" style="width: 100%">Masuk ke dashboard</button>
+
             <p id="login-error" class="hidden error-text text-danger mt-2.5 text-[13px]"></p>
           </form>
+
+          <p class="login-foot">
+            Butuh akses baru? Hubungi administrator PPI untuk pembuatan akun.
+          </p>
         </div>
       </section>
     </div>
+
     <script type="module">
       import { login, getToken } from "./assets/js/api.js";
-      import { toast } from "./assets/js/components/shell.js";
 
       if (getToken()) location.replace("pages/dashboard.html");
 
@@ -69,6 +202,16 @@
           document.getElementById("username").value = btn.getAttribute("data-email");
           document.getElementById("password").value = "0";
         });
+      });
+
+      const passwordInput = document.getElementById("password");
+      const toggle = document.getElementById("toggle-password");
+
+      toggle?.addEventListener("click", () => {
+        const show = passwordInput.type === "password";
+        passwordInput.type = show ? "text" : "password";
+        toggle.setAttribute("aria-pressed", String(show));
+        toggle.setAttribute("aria-label", show ? "Sembunyikan password" : "Tampilkan password");
       });
 
       document.getElementById("login-form").addEventListener("submit", async (e) => {
@@ -82,7 +225,7 @@
         try {
           await login(String(fd.get("username")), String(fd.get("password")));
 
-          toast("Login berhasil", "success");
+          sessionStorage.setItem("flash_toast", "Login berhasil. Selamat bekerja.");
           location.href = "pages/dashboard.html";
         } catch (ex) {
           err.textContent = ex.message || "Login gagal. Periksa email/username dan password.";

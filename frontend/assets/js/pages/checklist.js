@@ -172,12 +172,12 @@ async function main() {
         <table class="data" style="border:none">
           <thead>
             <tr>
-              <th style="width:60px">No.</th>
+              <th style="width: 56px">No.</th>
               <th>Nama Checklist</th>
-              <th>Deskripsi</th>
-              <th>Tipe Ruangan</th>
+              <th class="hide-sm">Deskripsi</th>
+              <th class="hide-sm">Tipe Ruangan</th>
               <th>Wajib</th>
-              <th>Urutan</th>
+              <th class="hide-sm">Urutan</th>
             </tr>
           </thead>
 
@@ -194,11 +194,11 @@ async function main() {
                               ${escapeHtml(item.name || "—")}
                           </td>
 
-                          <td>
+                          <td class="hide-sm">
                             ${escapeHtml(item.description || "—")}
                           </td>
 
-                          <td>
+                          <td class="hide-sm">
                             ${escapeHtml(
                               roomTypes[item.room_type] || item.room_type || "Semua Ruangan",
                             )}
@@ -208,7 +208,7 @@ async function main() {
                             ${item.is_required ? "Ya" : "Tidak"}
                           </td>
 
-                          <td>
+                          <td class="hide-sm">
                             ${item.order_number ?? "—"}
                           </td>
                         </tr>

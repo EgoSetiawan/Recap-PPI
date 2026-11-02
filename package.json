@@ -21,6 +21,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "css:watch": "bunx @tailwindcss/cli -i ./frontend/assets/css/input.css -o ./frontend/assets/css/app.css --watch"
+    "css:watch": "bunx @tailwindcss/cli -i ./frontend/assets/css/input.css -o ./frontend/assets/css/app.css --watch",
+    "css:theme": "bunx @tailwindcss/cli -i ./frontend/assets/css/theme.src.css -o ./frontend/assets/css/theme.css",
+    "css:theme:watch": "bunx @tailwindcss/cli -i ./frontend/assets/css/theme.src.css -o ./frontend/assets/css/theme.css --watch"
   }
 }

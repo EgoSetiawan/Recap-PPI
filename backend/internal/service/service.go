@@ -285,10 +285,10 @@ func (s *Service) CreateChecklist(actor *model.User, c *model.ChecklistItem) (*m
 		)
 	}
 
-	if actor.Role != "Administrator" {
+	if !auth.IsAdmin(actor.Role) && !auth.IsKepala(actor.Role) {
 		return nil, response.Err(
 			"FORBIDDEN",
-			"Hanya Anggota yang dapat membuat pemeriksaan",
+			"Hanya admin atau kepala PPI yang dapat mengelola item pemeriksaan",
 			http.StatusForbidden,
 		)
 	}

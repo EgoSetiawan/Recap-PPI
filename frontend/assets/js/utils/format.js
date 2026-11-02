@@ -20,6 +20,14 @@ export function formatDateShort(iso) {
   return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+/** Month + year only — used for inspection periods. */
+export function formatMonth(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+}
+
 export function conditionBadge(condition) {
   const map = {
     GOOD: { kind: "good", label: "Baik" },
@@ -91,7 +99,58 @@ export function roleLabel(role) {
     KEPALA: "Kepala PPI",
     ANGGOTA: "Anggota PPI",
   };
-  return map[role] || role || "";
+
+  return map[normalizeRole(role)] || role || "";
+}
+
+/**
+ * Normalizes the role names used by the API, the seeds and older
+ * UI code ("KEPALA", "ATASAN_PPI", "KEPALA_RUANGAN", …).
+ */
+export function normalizeRole(role) {
+  const value = String(role ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+
+  switch (value) {
+    case "ATASAN_PPI":
+    case "KEPALA":
+    case "KEPALA_RUANGAN":
+    case "KEPALA_PPI":
+      return "KEPALA";
+    case "ANGGOTA_PPI":
+    case "ANGGOTA":
+    case "ANGGOTA_RUANGAN":
+      return "ANGGOTA";
+    case "ADMIN":
+    case "ADMINISTRATOR":
+    case "SUPER_ADMIN":
+      return "SUPER_ADMIN";
+    default:
+      return value;
+  }
+}
+
+export function isAdminRole(role) {
+  return normalizeRole(role) === "SUPER_ADMIN";
+}
+
+export function isKepalaRole(role) {
+  return normalizeRole(role) === "KEPALA";
+}
+
+export function isAnggotaRole(role) {
+  return normalizeRole(role) === "ANGGOTA";
+}
+
+/** Finds a signature by role ("ANGGOTA" or "KEPALA"). */
+export function signatureByRole(signatures, role) {
+  const wanted = normalizeRole(role);
+
+  return (Array.isArray(signatures) ? signatures : []).find(
+    (signature) => normalizeRole(signature?.role) === wanted,
+  );
 }
 
 export function resultLabel(result) {

@@ -1,7 +1,33 @@
 import { APP_CONFIG } from "./config-module.js";
+import { normalizeRole } from "./utils/format.js";
 
 const TOKEN_KEY = "he_token";
 const USER_KEY = "he_user";
+
+/*
+ * The API authorises by role (SUPER_ADMIN / KEPALA / ANGGOTA) and does
+ * not expose a permission list, so the UI mirrors those capabilities
+ * here. An explicit `permissions` array from the API still wins.
+ */
+const ROLE_PERMISSIONS = {
+  SUPER_ADMIN: [
+    "rooms.manage",
+    "checklist.manage",
+    "inspections.manage",
+    "inspections.create",
+    "inspections.sign",
+    "inspections.approve",
+    "users.manage",
+  ],
+  KEPALA: [
+    "rooms.manage",
+    "checklist.manage",
+    "inspections.manage",
+    "inspections.sign",
+    "inspections.approve",
+  ],
+  ANGGOTA: ["inspections.create", "inspections.sign"],
+};
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -27,7 +53,14 @@ export function getStoredUser() {
 
 export function hasPermission(perm) {
   const user = getStoredUser();
-  return !!(user && Array.isArray(user.permissions) && user.permissions.includes(perm));
+
+  if (!user) return false;
+
+  if (Array.isArray(user.permissions) && user.permissions.length) {
+    return user.permissions.includes(perm);
+  }
+
+  return (ROLE_PERMISSIONS[normalizeRole(user.role)] || []).includes(perm);
 }
 
 export function hasAnyPermission(...perms) {
@@ -59,7 +92,6 @@ export async function api(path, options = {}) {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(body);
   }
-  console.log("FETCH URL:", url);
   const res = await fetch(url, { ...options, headers, body });
   const ct = res.headers.get("content-type") || "";
 

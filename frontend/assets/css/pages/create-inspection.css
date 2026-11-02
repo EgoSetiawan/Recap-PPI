@@ -227,8 +227,7 @@
   box-shadow: inset 0 0 0 1px #315778;
 }
 
-#detail-root .inspection-calendar__day.is-selected
-.inspection-calendar__day-number {
+#detail-root .inspection-calendar__day.is-selected .inspection-calendar__day-number {
   color: #1d4ed8;
 }
 

@@ -19,10 +19,6 @@ export class SignaturePad {
 
   _render() {
     this.root.innerHTML = `
-      <div class="sig-tabs">
-        <button type="button" class="${btnSecondary} ${btnSm} sig-tab active" data-mode="draw">Gambar</button>
-        <button type="button" class="${btnSecondary} ${btnSm} sig-tab" data-mode="upload">Unggah</button>
-      </div>
       <div class="sig-draw-panel">
       <canvas width="560" height="180" aria-label="Area tanda tangan"></canvas>
         <div class="signature-actions">

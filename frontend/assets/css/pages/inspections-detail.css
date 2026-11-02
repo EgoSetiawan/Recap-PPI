@@ -1,0 +1,28 @@
+.checklist-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.checklist-table th,
+.checklist-table td {
+  text-align: left;
+  vertical-align: middle;
+}
+
+.checklist-table th:first-child,
+.checklist-table td:first-child {
+  width: 70%;
+}
+
+.checklist-table th:last-child,
+.checklist-table td:last-child {
+  width: 30%;
+}
+
+.checklist-rating {
+  width: 180px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+}
