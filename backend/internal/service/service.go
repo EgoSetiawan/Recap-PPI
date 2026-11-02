@@ -111,7 +111,7 @@ func (s *Service) Login(in LoginInput) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	// _ = s.Repo.AddAudit(uid(user), "LOGIN", "user", uid(user), nil, map[string]string{"email": user.Email}, ip)
+
 	return map[string]interface{}{
 		"token": token,
 		"user":  publicUser(user),

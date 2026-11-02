@@ -87,7 +87,7 @@ const NAV_SECTIONS = [
         href: "inspection.html",
         label: "Pemeriksaan",
         icon: "inspection",
-        roles: ["SUPER_ADMIN", "ANGGOTA"],
+        roles: ["SUPER_ADMIN", "KEPALA", "ANGGOTA"],
       },
     ],
   },
