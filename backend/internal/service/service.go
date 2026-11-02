@@ -52,13 +52,13 @@ func publicUser(u *model.User) *model.User {
 	return &cp
 }
 
-func uid(u *model.User) *int64 {
-	if u == nil {
-		return nil
-	}
-	id := u.ID
-	return &id
-}
+// func uid(u *model.User) *int64 {
+// 	if u == nil {
+// 		return nil
+// 	}
+// 	id := u.ID
+// 	return &id
+// }
 
 // --- Auth ---
 

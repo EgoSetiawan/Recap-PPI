@@ -89,13 +89,13 @@ async function main() {
 
   // Load rooms from ListRoomsWithActors
   async function load() {
-    const query = {
-      q: filterQ.value.trim() || undefined,
-    };
+  const query = {
+    q: filterQ.value.trim() || undefined,
+  };
 
-    const { data } = await api("/rooms", { query });
+  const { data } = await api("/rooms", { query });
 
-    roomsTable.innerHTML = `
+  roomsTable.innerHTML = `
     <div class="${tableWrap}">
       <table class="data" style="border:none">
         <thead>
@@ -104,7 +104,6 @@ async function main() {
             <th>Nama Ruangan</th>
             <th class="hide-sm">Tipe</th>
             <th class="hide-sm">Anggota PPI</th>
-            <th></th>
           </tr>
         </thead>
 
@@ -129,10 +128,17 @@ async function main() {
                         .map(
                           (actor) => `
                             <div class="actor">
-                              <span class="actor-avatar">${escapeHtml(initials(actor.name))}</span>
+                              <span class="actor-avatar">
+                                ${escapeHtml(initials(actor.name))}
+                              </span>
+
                               <span class="actor-copy">
                                 <strong>${escapeHtml(actor.name || "—")}</strong>
-                                ${actor.nip ? `<small>${escapeHtml(actor.nip)}</small>` : ""}
+                                ${
+                                  actor.nip
+                                    ? `<small>${escapeHtml(actor.nip)}</small>`
+                                    : ""
+                                }
                               </span>
                             </div>
                           `,
@@ -144,27 +150,16 @@ async function main() {
 
                 return `
                   <tr>
-                    <td>
-                      <a href="room-detail?id=${r.id}">
-                        ${escapeHtml(r.code)}
-                      </a>
-                    </td>
+                    <td>${escapeHtml(r.code || "—")}</td>
 
-                    <td>${escapeHtml(r.name)}</td>
+                    <td>${escapeHtml(r.name || "—")}</td>
 
                     <td class="hide-sm">
                       ${escapeHtml(roomTypeLabel(r.room_type))}
                     </td>
 
-                    <td class="hide-sm">${actorNames}</td>
-
-                    <td class="row-actions">
-                      <a
-                        class="${btnSecondary} ${btnSm}"
-                        href="room-detail?id=${r.id}"
-                      >
-                        Lihat
-                      </a>
+                    <td class="hide-sm">
+                      ${actorNames}
                     </td>
                   </tr>
                 `;
@@ -172,7 +167,7 @@ async function main() {
               .join("") ||
             `
               <tr>
-                <td colspan="6" class="${empty}">
+                <td colspan="4" class="${empty}">
                   Tidak ada data ruangan
                 </td>
               </tr>
@@ -182,7 +177,7 @@ async function main() {
       </table>
     </div>
   `;
-  }
+}
 
   // Search by room name or room code
   filterQ.addEventListener("input", () => {
