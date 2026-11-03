@@ -89,13 +89,13 @@ async function main() {
 
   // Load rooms from ListRoomsWithActors
   async function load() {
-  const query = {
-    q: filterQ.value.trim() || undefined,
-  };
+    const query = {
+      q: filterQ.value.trim() || undefined,
+    };
 
-  const { data } = await api("/rooms", { query });
+    const { data } = await api("/rooms", { query });
 
-  roomsTable.innerHTML = `
+    roomsTable.innerHTML = `
     <div class="${tableWrap}">
       <table class="data" style="border:none">
         <thead>
@@ -134,11 +134,7 @@ async function main() {
 
                               <span class="actor-copy">
                                 <strong>${escapeHtml(actor.name || "—")}</strong>
-                                ${
-                                  actor.nip
-                                    ? `<small>${escapeHtml(actor.nip)}</small>`
-                                    : ""
-                                }
+                                ${actor.nip ? `<small>${escapeHtml(actor.nip)}</small>` : ""}
                               </span>
                             </div>
                           `,
@@ -177,9 +173,9 @@ async function main() {
       </table>
     </div>
   `;
-}
+  }
 
-  // Search by room name or room code
+  // Search by room name or roomap code
   filterQ.addEventListener("input", () => {
     clearTimeout(window.__roomT);
 
