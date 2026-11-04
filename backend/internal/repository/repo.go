@@ -517,6 +517,15 @@ func (r *Repo) GetKetua() (string, string, error) {
 	return name, nip, err
 }
 
+func (r *Repo) GetUserNIP(id int64) (string, error) {
+	var nip string
+	err := r.DB.QueryRow(`SELECT nip FROM users WHERE id = $1`, id).Scan(&nip)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return nip, err
+}
+
 func (r *Repo) ListChecklist(roomType string) ([]model.ChecklistItem, error) {
 	q := `SELECT id, room_type, name, description, is_required, order_number, created_at, updated_at FROM checklist_items`
 	args := []interface{}{}

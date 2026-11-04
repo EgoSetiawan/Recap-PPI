@@ -1,7 +1,12 @@
 package service
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	"image/png"
 	"log"
 	"strings"
 	"time"
@@ -9,10 +14,13 @@ import (
 	"PPI/internal/model"
 
 	"github.com/johnfercher/maroto/v2"
+	"github.com/johnfercher/maroto/v2/pkg/components/col"
+	marotoimage "github.com/johnfercher/maroto/v2/pkg/components/image"
 	"github.com/johnfercher/maroto/v2/pkg/components/text"
 	"github.com/johnfercher/maroto/v2/pkg/config"
 	"github.com/johnfercher/maroto/v2/pkg/consts/align"
 	"github.com/johnfercher/maroto/v2/pkg/consts/border"
+	"github.com/johnfercher/maroto/v2/pkg/consts/extension"
 	"github.com/johnfercher/maroto/v2/pkg/consts/fontstyle"
 	"github.com/johnfercher/maroto/v2/pkg/consts/orientation"
 	"github.com/johnfercher/maroto/v2/pkg/consts/pagesize"
@@ -20,6 +28,7 @@ import (
 	"github.com/johnfercher/maroto/v2/pkg/core/entity"
 	"github.com/johnfercher/maroto/v2/pkg/fontrepository"
 	"github.com/johnfercher/maroto/v2/pkg/props"
+	_ "golang.org/x/image/webp"
 )
 
 func loadFonts() ([]entity.CustomFont, error) {
@@ -45,9 +54,10 @@ func loadFonts() ([]entity.CustomFont, error) {
 
 func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byte, string, error) {
 	ins, err := s.getInspectionForActor(actor, id)
-	ketuaName, KetuaNip, err := s.Repo.GetKetua()
-	// fmt.Println("Actor:", actor.Name, Actor.Nip)
-	log.Printf("Actor name: %q, Actor NIP: %q", actor.Name, actor.Nip)
+	if err != nil {
+		return nil, "", err
+	}
+	ketuaName, ketuaNip, err := s.Repo.GetKetua()
 	if err != nil {
 		return nil, "", fmt.Errorf("get ketua name: %w", err)
 	}
@@ -257,6 +267,29 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		text.NewCol(18, "", props.Text{Size: 1}),
 	)
 	// SIGNATURE
+	kepalaSignature := findSignatureByRole(ins.Signatures, "KEPALA")
+	anggotaSignature := findSignatureByRole(ins.Signatures, "ANGGOTA")
+
+	ketuaDisplayName, ketuaDisplayNip := ketuaName, ketuaNip
+	if kepalaSignature != nil {
+		if name := strings.TrimSpace(kepalaSignature.SignerName); name != "" {
+			ketuaDisplayName = name
+		}
+		if nip := s.signatureSignerNip(kepalaSignature); nip != "" {
+			ketuaDisplayNip = nip
+		}
+	}
+
+	anggotaDisplayName, anggotaDisplayNip := actor.Name, actor.Nip
+	if anggotaSignature != nil {
+		if name := strings.TrimSpace(anggotaSignature.SignerName); name != "" {
+			anggotaDisplayName = name
+		}
+		if nip := s.signatureSignerNip(anggotaSignature); nip != "" {
+			anggotaDisplayNip = nip
+		}
+	}
+
 	m.AddRow(
 		5,
 		text.NewCol(
@@ -277,18 +310,17 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		),
 	)
 
-	// Signature space
 	m.AddRow(
-		15,
-		text.NewCol(18, "", props.Text{Size: 9}),
-		text.NewCol(18, "", props.Text{Size: 9}),
+		18,
+		signatureImageCol(18, kepalaSignature),
+		signatureImageCol(18, anggotaSignature),
 	)
 	// Names
 	m.AddRow(
 		5,
 		text.NewCol(
 			18,
-			ketuaName,
+			ketuaDisplayName,
 			props.Text{
 				Size:  9,
 				Style: fontstyle.Bold,
@@ -297,7 +329,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		),
 		text.NewCol(
 			18,
-			actor.Name,
+			anggotaDisplayName,
 			props.Text{
 				Size:  9,
 				Style: fontstyle.Bold,
@@ -310,7 +342,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		5,
 		text.NewCol(
 			18,
-			"NIP. "+KetuaNip,
+			"NIP. "+ketuaDisplayNip,
 			props.Text{
 				Size:  8,
 				Align: align.Center,
@@ -318,7 +350,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		),
 		text.NewCol(
 			18,
-			"NIP. "+actor.Nip,
+			"NIP. "+anggotaDisplayNip,
 			props.Text{
 				Size:  8,
 				Align: align.Center,
@@ -345,6 +377,77 @@ func monthlyCellStyle() *props.Cell {
 		BorderColor:     &props.BlackColor,
 		BorderThickness: 0.1,
 	}
+}
+
+// signatureSignerNip resolves the NIP of the user who signed, so the printed
+// name and NIP always belong to the same person.
+func (s *Service) signatureSignerNip(sig *model.Signature) string {
+	if sig == nil || sig.SignerUserID == nil {
+		return ""
+	}
+
+	nip, err := s.Repo.GetUserNIP(*sig.SignerUserID)
+	if err != nil {
+		log.Printf("resolve signature NIP for user %d: %v", *sig.SignerUserID, err)
+		return ""
+	}
+
+	return strings.TrimSpace(nip)
+}
+
+// signatureImageCol renders the signature image for one PDF column. Missing or
+// unreadable signatures leave the column blank instead of failing the report.
+func signatureImageCol(size int, sig *model.Signature) core.Col {
+	if sig == nil || strings.TrimSpace(sig.ImageDataURL) == "" {
+		return col.New(size)
+	}
+
+	pngBytes, err := signatureDataURLToPNG(sig.ImageDataURL)
+	if err != nil {
+		log.Printf("render %s signature: %v", sig.Role, err)
+		return col.New(size)
+	}
+
+	return marotoimage.NewFromBytesCol(
+		size,
+		pngBytes,
+		extension.Png,
+		props.Rect{
+			Center:  true,
+			Percent: 100,
+		},
+	)
+}
+
+// signatureDataURLToPNG converts a data:image/... URL (PNG, JPEG or WebP) into
+// PNG bytes that maroto can embed in the PDF.
+func signatureDataURLToPNG(dataURL string) ([]byte, error) {
+	raw := strings.TrimSpace(dataURL)
+	if !strings.HasPrefix(raw, "data:image/") {
+		return nil, fmt.Errorf("unsupported signature data URL")
+	}
+
+	comma := strings.IndexByte(raw, ',')
+	if comma < 0 || !strings.Contains(raw[:comma], ";base64") {
+		return nil, fmt.Errorf("signature data URL is not base64 encoded")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(raw[comma+1:])
+	if err != nil {
+		return nil, fmt.Errorf("decode signature base64: %w", err)
+	}
+
+	img, _, err := image.Decode(bytes.NewReader(decoded))
+	if err != nil {
+		return nil, fmt.Errorf("decode signature image: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, fmt.Errorf("encode signature image: %w", err)
+	}
+
+	return buf.Bytes(), nil
 }
 
 func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items []model.ChecklistItem, answers map[int]map[int64]string) {
