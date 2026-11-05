@@ -239,6 +239,51 @@ func (h *Handler) ListRooms(c *gin.Context) {
 	response.OK(c, list, "Rooms retrieved")
 }
 
+func (h *Handler) ListUsers(c *gin.Context) {
+	users, err := h.Svc.ListUsers(middleware.CurrentUser(c))
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, users, "Users retrieved")
+}
+
+func (h *Handler) UpdateUserRooms(c *gin.Context) {
+	id, err := parseID(c, "id")
+	if err != nil || id <= 0 {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"Invalid user ID",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	var in service.UpdateUserRoomsInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.FailCode(
+			c,
+			"INVALID_JSON",
+			"Invalid request body",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	user, err := h.Svc.UpdateUserRooms(
+		middleware.CurrentUser(c),
+		id,
+		in.RoomIDs,
+	)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.OK(c, user, "Room assignments updated")
+}
+
 func (h *Handler) CreateChecklist(c *gin.Context) {
 	var in model.ChecklistItem
 	if err := c.ShouldBindJSON(&in); err != nil {

@@ -78,6 +78,8 @@ func main() {
 		authed.GET("/checklist-items", h.ListChecklist)
 		authed.POST("/checklist-items", h.CreateChecklist)
 		authed.GET("/rooms", h.ListRooms)
+		authed.GET("/users", h.ListUsers)
+		authed.PUT("/users/:id/rooms", h.UpdateUserRooms)
 		authed.PUT("/edit-checklist/:id", h.ReplaceChecklistForDate)
 		authed.PUT("/inspections/:id/checklist/date", h.SaveInspectionDate)
 		authed.PUT("/inspections/:id/notes", h.UpdateInspectionNotes)

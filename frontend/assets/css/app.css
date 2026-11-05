@@ -246,7 +246,7 @@
   iframe,
   embed,
   object {
-    vertical-align: middle;
+    /* vertical-align: middle; */
     display: block;
   }
   img,

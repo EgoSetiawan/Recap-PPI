@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -66,6 +67,10 @@ type LoginInput struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type UpdateUserRoomsInput struct {
+	RoomIDs []int64 `json:"room_ids"`
 }
 
 func scopeRoomIDs(u *model.User) []int64 {
@@ -274,6 +279,111 @@ func (s *Service) ListChecklist(roomType string) ([]model.ChecklistItem, error) 
 
 func (s *Service) ListRoomsWithActors(actor *model.User, q string) ([]model.Room, error) {
 	return s.Repo.ListRoomsWithActors(q, scopeRoomIDs(actor))
+}
+
+func canManageUserRooms(actor *model.User) bool {
+	return actor != nil && (auth.IsAdmin(actor.Role) || auth.IsKepala(actor.Role))
+}
+
+// ListUsers returns the user directory used by the room-assignment screen.
+func (s *Service) ListUsers(actor *model.User) ([]model.User, error) {
+	if !canManageUserRooms(actor) {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya admin atau kepala PPI yang dapat mengelola pengguna",
+			http.StatusForbidden,
+		)
+	}
+
+	users, err := s.Repo.ListUsers()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]model.User, 0, len(users))
+	for i := range users {
+		out = append(out, *publicUser(&users[i]))
+	}
+
+	return out, nil
+}
+
+// UpdateUserRooms replaces the rooms assigned to an Anggota PPI.
+func (s *Service) UpdateUserRooms(actor *model.User, userID int64, roomIDs []int64) (*model.User, error) {
+	if !canManageUserRooms(actor) {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya admin atau kepala PPI yang dapat mengubah penugasan ruangan",
+			http.StatusForbidden,
+		)
+	}
+
+	if userID <= 0 {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"ID pengguna tidak valid",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	target, err := s.Repo.GetByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	if target == nil {
+		return nil, response.Err(
+			"NOT_FOUND",
+			"Pengguna tidak ditemukan",
+			http.StatusNotFound,
+		)
+	}
+
+	if !auth.IsAnggota(target.Role) {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Hanya anggota PPI yang dapat ditugaskan ke ruangan",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	normalized := make([]int64, 0, len(roomIDs))
+	seen := make(map[int64]struct{}, len(roomIDs))
+
+	for _, roomID := range roomIDs {
+		if roomID <= 0 {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"ID ruangan tidak valid",
+				http.StatusUnprocessableEntity,
+			)
+		}
+		if _, exists := seen[roomID]; exists {
+			continue
+		}
+
+		room, err := s.Repo.GetRoom(roomID)
+		if err != nil {
+			return nil, err
+		}
+		if room == nil {
+			return nil, response.Err(
+				"NOT_FOUND",
+				fmt.Sprintf("Ruangan %d tidak ditemukan", roomID),
+				http.StatusNotFound,
+			)
+		}
+
+		seen[roomID] = struct{}{}
+		normalized = append(normalized, roomID)
+	}
+
+	target.AssignedRoomIDs = normalized
+
+	if err := s.Repo.ChangeAssignPersonRoom(target); err != nil {
+		return nil, err
+	}
+
+	return publicUser(target), nil
 }
 
 func (s *Service) CreateChecklist(actor *model.User, c *model.ChecklistItem) (*model.ChecklistItem, error) {

@@ -18,6 +18,7 @@ const ROLE_PERMISSIONS = {
     "inspections.sign",
     "inspections.approve",
     "users.manage",
+    "users.assign_rooms",
   ],
   KEPALA: [
     "rooms.manage",
@@ -25,6 +26,7 @@ const ROLE_PERMISSIONS = {
     "inspections.manage",
     "inspections.sign",
     "inspections.approve",
+    "users.assign_rooms",
   ],
   ANGGOTA: ["inspections.create", "inspections.sign"],
 };

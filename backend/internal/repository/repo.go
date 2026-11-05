@@ -147,6 +147,27 @@ func (r *Repo) GetByUsernameOrEmail(identifier string) (*model.User, error) {
 	))
 }
 
+func (r *Repo) ListUsers() ([]model.User, error) {
+	rows, err := r.DB.Query(userSelect + ` ORDER BY u.name, u.id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]model.User, 0)
+	for rows.Next() {
+		user, err := r.scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		if user != nil {
+			users = append(users, *user)
+		}
+	}
+
+	return users, rows.Err()
+}
+
 // --- Rooms ---
 
 const roomSelect = `
@@ -586,4 +607,23 @@ func (r *Repo) CreateChecklistItem(c *model.ChecklistItem) error {
 		 VALUES ($1,$2,$3,$4,$5) RETURNING id, created_at, updated_at`,
 		c.RoomType, c.Name, c.Description, c.IsRequired, c.OrderNumber,
 	).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt)
+}
+
+// ChangeAssignPersonRoom replaces all room assignments for a user.
+func (r *Repo) ChangeAssignPersonRoom(user *model.User) error {
+	if user == nil {
+		return fmt.Errorf("user is required")
+	}
+
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := r.setAssignedRooms(tx, user.ID, user.AssignedRoomIDs); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

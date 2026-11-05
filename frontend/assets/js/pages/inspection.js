@@ -45,6 +45,23 @@ function unwrapArray(response) {
   return [];
 }
 
+async function findExistingInspection(roomID, month) {
+  const query = {
+    room_id: roomID,
+    month: `${month}-01`,
+  };
+
+  const openResponse = await api("/inspections/open", { query });
+  const openInspections = unwrapArray(openResponse);
+
+  if (openInspections.length) return openInspections[0];
+
+  const otherResponse = await api("/inspections", { query });
+  const otherInspections = unwrapArray(otherResponse);
+
+  return otherInspections.length ? otherInspections[0] : null;
+}
+
 function roomName(room) {
   return room.name || room.room_name || `Ruangan #${room.id}`;
 }
@@ -67,6 +84,41 @@ function showPageError(message) {
 
 function countCompleted(items) {
   return items.filter((item) => Boolean(item.status)).length;
+}
+
+const INSPECTION_STATUS_LABELS = {
+  OPEN: "Draft",
+  SUBMITTED: "Menunggu Review",
+  APPROVED: "Disetujui",
+  REJECTED: "Ditolak",
+};
+
+function formatMonthLabel(month) {
+  const date = new Date(`${month}-01T00:00:00Z`);
+
+  if (Number.isNaN(date.getTime())) return month;
+
+  return date.toLocaleDateString("id-ID", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function openExistingInspection(room, month, inspection) {
+  const status =
+    INSPECTION_STATUS_LABELS[String(inspection.status || "").toUpperCase()] ||
+    inspection.status ||
+    "Tidak diketahui";
+
+  toast(
+    `Pemeriksaan ${roomName(room)} periode ${formatMonthLabel(month)} sudah ada (${status}). Membuka data tersebut...`,
+    "info",
+  );
+
+  window.setTimeout(() => {
+    window.location.href = `inspection-detail.html?id=${encodeURIComponent(inspection.id)}`;
+  }, 900);
 }
 
 // =========================================================
@@ -354,6 +406,19 @@ async function loadChecklistForRoom() {
 
   if (!room) {
     toast("Ruangan tidak ditemukan.", "error");
+    return;
+  }
+
+  const existingInspection = await findExistingInspection(roomID, month);
+
+  if (existingInspection) {
+    selectedRoom = null;
+    definitions = [];
+    monthKey = "";
+    draftDays.clear();
+
+    document.getElementById("bulk-create-form").hidden = true;
+    openExistingInspection(room, month, existingInspection);
     return;
   }
 
@@ -873,6 +938,24 @@ function setupCreateInspection() {
       window.location.href = `inspection-detail.html?id=${encodeURIComponent(inspection.id)}`;
     } catch (error) {
       console.error("Create inspection error:", error);
+
+      // A concurrent request may have created the inspection after the
+      // initial check. Resolve it and redirect to that record.
+      if (selectedRoom && monthKey) {
+        try {
+          const existingInspection = await findExistingInspection(
+            Number(selectedRoom.id),
+            monthKey,
+          );
+
+          if (existingInspection) {
+            openExistingInspection(selectedRoom, monthKey, existingInspection);
+            return;
+          }
+        } catch (lookupError) {
+          console.error("Refresh inspection conflict:", lookupError);
+        }
+      }
 
       toast(error.message || "Gagal membuat pemeriksaan.", "error");
     } finally {

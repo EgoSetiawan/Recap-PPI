@@ -117,7 +117,7 @@ const NAV_SECTIONS = [
         href: "users.html",
         label: "Pengguna",
         icon: "users",
-        roles: ["SUPER_ADMIN"],
+        roles: ["SUPER_ADMIN", "KEPALA"],
       },
     ],
   },
