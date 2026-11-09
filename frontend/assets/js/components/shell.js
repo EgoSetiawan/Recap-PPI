@@ -1,4 +1,4 @@
-import { logout, getStoredUser, api } from "../api.js";
+import { logout, getStoredUser } from "../api.js";
 import { escapeHtml, roleLabel } from "../utils/format.js";
 import {
   btn,
@@ -12,8 +12,6 @@ import {
   modalFooter,
   toastContainer,
   toastClass,
-  card,
-  empty,
 } from "../ui.js";
 
 /*
@@ -35,7 +33,6 @@ const ICONS = {
   history: '<path d="M3 12a9 9 0 1 0 2.7-6.4L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
   users:
     '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
   logout:
     '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>',
@@ -117,6 +114,12 @@ const NAV_SECTIONS = [
         href: "users.html",
         label: "Pengguna",
         icon: "users",
+        roles: ["SUPER_ADMIN", "KEPALA"],
+      },
+      {
+        href: "audit.html",
+        label: "Audit Log",
+        icon: "history",
         roles: ["SUPER_ADMIN", "KEPALA"],
       },
     ],
@@ -600,15 +603,6 @@ export async function mountShell(activePage, options = {}) {
 
           <button
             type="button"
-            class="${iconBtn} notif-dot"
-            id="btn-notif"
-            aria-label="Notifikasi"
-          >
-            ${icon("bell", "bell-icon")}
-          </button>
-
-          <button
-            type="button"
             class="${btnSecondary} ${btnSm} btn-logout-full"
             id="btn-logout"
           >
@@ -671,11 +665,6 @@ export async function mountShell(activePage, options = {}) {
       </div>
 
     </div>
-
-    <div
-      id="notif-panel"
-      class="${card} notif-panel hidden"
-    ></div>
   `;
 
   bindNavDrawer(shell);
@@ -730,89 +719,4 @@ export async function mountShell(activePage, options = {}) {
 
     location.href = `rooms.html?q=${encodeURIComponent(String(q || ""))}`;
   });
-
-  /*
-   * Notifications
-   */
-  const btnNotif = document.getElementById("btn-notif");
-
-  const panel = document.getElementById("notif-panel");
-
-  try {
-    const res = await api("/notifications");
-
-    const notifications = res.data || [];
-
-    const unread = notifications.filter((notification) => !notification.is_read).length;
-
-    if (unread) {
-      btnNotif?.setAttribute("data-count", String(unread));
-    }
-
-    btnNotif?.addEventListener("click", () => {
-      panel.classList.toggle("hidden");
-
-      panel.innerHTML = `
-          <h3 class="notif-panel-title">
-            Notifikasi
-          </h3>
-
-          ${
-            notifications
-              .map(
-                (notification) => `
-                  <div class="notif-item">
-
-                    <strong>
-                      ${escapeHtml(notification.title)}
-                    </strong>
-
-                    <div class="notif-msg">
-                      ${escapeHtml(notification.message)}
-                    </div>
-
-                    ${
-                      !notification.is_read
-                        ? `
-                          <button
-                            class="${btnSecondary} ${btnSm}"
-                            data-read="${notification.id}"
-                          >
-                            Tandai dibaca
-                          </button>
-                        `
-                        : ""
-                    }
-
-                  </div>
-                `,
-              )
-              .join("") ||
-            `
-              <p class="${empty}">
-                Tidak ada notifikasi
-              </p>
-            `
-          }
-        `;
-
-      panel.querySelectorAll("[data-read]").forEach((btnEl) => {
-        btnEl.addEventListener("click", async () => {
-          try {
-            await api(`/notifications/${btnEl.getAttribute("data-read")}/read`, {
-              method: "PATCH",
-            });
-
-            btnEl.remove();
-
-            toast("Ditandai dibaca", "success");
-          } catch (err) {
-            toast(err.message || "Gagal menandai notifikasi", "error");
-          }
-        });
-      });
-    });
-  } catch {
-    // Ignore notification errors.
-  }
 }

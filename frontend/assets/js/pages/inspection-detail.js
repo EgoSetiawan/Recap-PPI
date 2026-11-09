@@ -18,6 +18,7 @@ import {
   btn,
   btnSecondary,
   empty,
+  formGroup,
   section,
   sectionHeader,
   sectionBody,
@@ -981,6 +982,9 @@ async function main() {
 
   const isRejectedInspection = inspectionStatus === "REJECTED";
 
+  // Approved records are archived and cannot be deleted.
+  const canDeleteInspection = canManageInspection && !isApprovedInspection;
+
   // Highlight the nav entry that matches the current inspection state.
   const navTarget = isOpenInspection ? "open-inspection.html" : "latest.html";
 
@@ -1012,15 +1016,12 @@ async function main() {
 
   const isAssignedInspector = Number(user.id) > 0 && Number(insp.inspector_id) === Number(user.id);
 
-  // Petugas: the assigned inspector signs the petugas slot. A kepala never
-  // fills that slot, so one person cannot sign both roles. Drafts can be
+  // Petugas: the assigned inspector signs the petugas slot. Kepala can also
+  // fill this slot when they create or edit the inspection. Drafts can be
   // signed/re-signed; a SUBMITTED record without a petugas signature can
   // still be completed (older data), final records are locked.
   const canSignAsAnggota =
-    (isOpenInspection || isSubmittedInspection) &&
-    isAssignedInspector &&
-    !isKepala &&
-    !hasAnggotaSignature;
+    (isOpenInspection || isSubmittedInspection) && isAssignedInspector && !hasAnggotaSignature;
 
   // Anggota: the signed draft can be sent to the kepala for review.
   // Only the assigned inspector can submit (the API enforces the same).
@@ -1034,7 +1035,7 @@ async function main() {
   const canApproveInspection =
     (isKepala || isAdmin) && isSubmittedInspection && hasAnggotaSignature && hasKepalaSignature;
 
-  const canEditChecklist = isOpenInspection && (isAssignedInspector || isAdmin);
+  const canEditChecklist = isOpenInspection && (isAssignedInspector || isAdmin || isKepala);
 
   // Workflow narrative shown next to the action buttons.
   let workflowNote = "";
@@ -1102,7 +1103,7 @@ async function main() {
     </button>
 
     ${
-      canManageInspection
+      canDeleteInspection
         ? `
           <button
             type="button"
@@ -1271,7 +1272,30 @@ async function main() {
       </div>
 
       <div class="${sectionBody}">
-        ${escapeHtml(insp.notes || "—")}
+        ${
+          canEditChecklist
+            ? `
+              <div class="${formGroup}">
+                <label for="inspection-notes">Catatan Pemeriksaan</label>
+                <textarea
+                  id="inspection-notes"
+                  rows="4"
+                  placeholder="Masukkan catatan umum pemeriksaan..."
+                >${escapeHtml(insp.notes || "")}</textarea>
+              </div>
+
+              <div class="inspection-form-actions" style="margin-top:8px">
+                <button
+                  type="button"
+                  class="${btn}"
+                  id="btn-save-notes"
+                >
+                  Simpan Catatan
+                </button>
+              </div>
+            `
+            : `<p class="page-meta">${escapeHtml(insp.notes || "—")}</p>`
+        }
       </div>
     </div>
 
@@ -1364,6 +1388,37 @@ async function main() {
   // --------------------------------------------------
 
   await setupDailyChecklist(insp, { canEdit: canEditChecklist });
+
+  // --------------------------------------------------
+  // EDIT MONTHLY NOTES
+  // --------------------------------------------------
+
+  const notesInput = document.getElementById("inspection-notes");
+  const saveNotesButton = document.getElementById("btn-save-notes");
+
+  if (notesInput && saveNotesButton) {
+    saveNotesButton.addEventListener("click", async () => {
+      saveNotesButton.disabled = true;
+      saveNotesButton.textContent = "Menyimpan...";
+
+      try {
+        await api(`/inspections/${insp.id}/notes`, {
+          method: "PUT",
+          body: {
+            notes: notesInput.value.trim(),
+          },
+        });
+
+        toast("Catatan pemeriksaan berhasil disimpan", "success");
+        saveNotesButton.textContent = "Simpan Catatan";
+      } catch (error) {
+        toast(error.message || "Gagal menyimpan catatan", "error");
+        saveNotesButton.textContent = "Simpan Catatan";
+      } finally {
+        saveNotesButton.disabled = false;
+      }
+    });
+  }
 
   // ==================================================
   // ANGGOTA SIGNATURE MODAL

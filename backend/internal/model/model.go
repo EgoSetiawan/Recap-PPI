@@ -95,3 +95,17 @@ type SaveInspectionDateItem struct {
 type UpdateInspectionNotesInput struct {
 	Notes string `json:"notes"`
 }
+
+type AuditLog struct {
+	ID         int64       `json:"id"`
+	UserID     *int64      `json:"user_id,omitempty"`
+	UserName   string      `json:"user_name"`
+	Action     string      `json:"action"`
+	EntityType string      `json:"entity_type"`
+	EntityID   *int64      `json:"entity_id,omitempty"`
+	EntityName string      `json:"entity_name,omitempty"`
+	OldValue   interface{} `json:"old_value,omitempty"`
+	NewValue   interface{} `json:"new_value,omitempty"`
+	IPAddress  string      `json:"-"`
+	CreatedAt  time.Time   `json:"created_at"`
+}

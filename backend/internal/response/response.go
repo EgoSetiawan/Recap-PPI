@@ -1,6 +1,7 @@
 package response
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -52,11 +53,13 @@ func Fail(c *gin.Context, err error) {
 		return
 	}
 
+	log.Printf("internal server error: %v", err)
+
 	c.JSON(http.StatusInternalServerError, Envelope{
 		Success: false,
 		Error: &APIError{
 			Code:    "INTERNAL_ERROR",
-			Message: err.Error(),
+			Message: "Terjadi kesalahan pada server",
 		},
 	})
 }

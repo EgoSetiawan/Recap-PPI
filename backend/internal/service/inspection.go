@@ -3,8 +3,10 @@ package service
 import (
 	// "mime/multipart"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,6 +15,8 @@ import (
 	"PPI/internal/repository"
 	"PPI/internal/response"
 	// "PPI/internal/storage"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -34,6 +38,10 @@ type ChecklistItemInput struct {
 type SaveInspectionDateInput struct {
 	AnswerDate string               `json:"answer_date" binding:"required"`
 	Items      []ChecklistItemInput `json:"items" binding:"required,min=1"`
+}
+
+type SaveInspectionBulkInput struct {
+	Days []SaveInspectionDateInput `json:"days" binding:"required,min=1,dive"`
 }
 
 type CreateInspectionInput struct {
@@ -59,9 +67,20 @@ type SaveChecklistInput struct {
 	Items      []model.ChecklistAnswer `json:"items"`
 }
 
+const maxSignatureDataURLBytes = 2 << 20 // 2 MiB
+
 func validSignatureImage(url string) bool {
 	u := strings.TrimSpace(url)
-	return strings.HasPrefix(u, "data:image") && len(u) > 80
+	if len(u) < 80 || len(u) > maxSignatureDataURLBytes {
+		return false
+	}
+	if !strings.HasPrefix(u, "data:image/") {
+		return false
+	}
+
+	// Decode the image so malformed data URLs cannot be persisted.
+	_, err := signatureDataURLToPNG(u)
+	return err == nil
 }
 
 func findSignatureByRole(signatures []model.Signature, role string) *model.Signature {
@@ -74,7 +93,7 @@ func findSignatureByRole(signatures []model.Signature, role string) *model.Signa
 	return nil
 }
 
-func buildInspectionChecklist(days []SaveInspectionDateInput, month time.Time) ([]model.ChecklistAnswer, error) {
+func buildInspectionChecklist(days []SaveInspectionDateInput, month time.Time, allowedItems map[int64]struct{}) ([]model.ChecklistAnswer, error) {
 	if len(days) == 0 {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
@@ -136,6 +155,17 @@ func buildInspectionChecklist(days []SaveInspectionDateInput, month time.Time) (
 				)
 			}
 
+			if _, ok := allowedItems[item.ChecklistItemID]; !ok {
+				return nil, response.Err(
+					"VALIDATION_ERROR",
+					fmt.Sprintf(
+						"Checklist item %d tidak tersedia untuk tipe ruangan ini",
+						item.ChecklistItemID,
+					),
+					http.StatusUnprocessableEntity,
+				)
+			}
+
 			if seenItems[item.ChecklistItemID] {
 				return nil, response.Err(
 					"VALIDATION_ERROR",
@@ -171,6 +201,20 @@ func buildInspectionChecklist(days []SaveInspectionDateInput, month time.Time) (
 	}
 
 	return checklist, nil
+}
+
+func (s *Service) allowedChecklistItems(roomType string) (map[int64]struct{}, error) {
+	items, err := s.Repo.ListChecklist(roomType)
+	if err != nil {
+		return nil, err
+	}
+
+	allowed := make(map[int64]struct{}, len(items))
+	for _, item := range items {
+		allowed[item.ID] = struct{}{}
+	}
+
+	return allowed, nil
 }
 
 func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDataURL string) (*model.Signature, error) {
@@ -338,6 +382,15 @@ func (s *Service) AddAnggotaSignature(actor *model.User, imageDataURL string, id
 			http.StatusUnauthorized,
 		)
 	}
+
+	if !auth.IsAnggota(actor.Role) && !auth.IsAdmin(actor.Role) && !auth.IsKepala(actor.Role) {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya pengguna yang berwenang yang dapat menandatangani sebagai petugas pemeriksa",
+			http.StatusForbidden,
+		)
+	}
+
 	// Check that the inspection exists and the actor can access it.
 	ins, err := s.getInspectionForActor(actor, id)
 	if err != nil {
@@ -420,6 +473,14 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		)
 	}
 
+	if !auth.IsAnggota(actor.Role) && !auth.IsAdmin(actor.Role) && !auth.IsKepala(actor.Role) {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya pengguna yang berwenang yang dapat membuat pemeriksaan",
+			http.StatusForbidden,
+		)
+	}
+
 	if in.RoomID <= 0 {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
@@ -461,8 +522,21 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		time.UTC,
 	)
 
+	// One active inspection is allowed per room and month.
+	existing, err := s.Repo.GetInspectionByRoomMonth(room.ID, month)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, inspectionExistsError(room.Name, month)
+	}
+
 	// Convert all dates and items from the request into checklist answers.
-	checklist, err := buildInspectionChecklist(in.Days, month)
+	allowedItems, err := s.allowedChecklistItems(room.RoomType)
+	if err != nil {
+		return nil, err
+	}
+	checklist, err := buildInspectionChecklist(in.Days, month, allowedItems)
 	if err != nil {
 		return nil, err
 	}
@@ -508,9 +582,38 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 	}
 	// Create the monthly inspection once.
 	if err := s.Repo.CreateInspectionFull(ins); err != nil {
+		if isInspectionRoomMonthConflict(err) {
+			return nil, inspectionExistsError(room.Name, month)
+		}
 		return nil, err
 	}
 	return s.Repo.GetInspection(ins.ID)
+}
+
+// inspectionExistsError builds the shared conflict response for a room/month
+// that is already occupied by an active inspection.
+func inspectionExistsError(roomName string, month time.Time) *response.AppError {
+	return response.Err(
+		"INSPECTION_EXISTS",
+		fmt.Sprintf(
+			"Pemeriksaan untuk ruangan %s pada %s sudah ada. Buka menu Pemeriksaan untuk melihat data tersebut atau pilih bulan lain.",
+			roomName,
+			month.Format("January 2006"),
+		),
+		http.StatusConflict,
+	)
+}
+
+// isInspectionRoomMonthConflict detects the unique violation from either the
+// original constraint or the active-row partial index.
+func isInspectionRoomMonthConflict(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+		return false
+	}
+
+	return pgErr.ConstraintName == "inspections_room_id_inspection_month_key" ||
+		pgErr.ConstraintName == "inspections_active_room_month_idx"
 }
 
 func (s *Service) SaveChecklist(actor *model.User, inspectionID int64, in SaveChecklistInput) (*model.Inspection, error) {
@@ -637,10 +740,36 @@ func (s *Service) getInspectionForActor(actor *model.User, id int64) (*model.Ins
 	return ins, nil
 }
 
-func (s *Service) DeleteInspection(actor *model.User, id int64) error {
-	err := s.Repo.SoftDeleteInspection(id)
+func (s *Service) DeleteInspection(actor *model.User, id int64, ipAddress string) error {
+	if actor == nil {
+		return response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
 
-	if err == sql.ErrNoRows {
+	if !auth.IsKepala(actor.Role) && !auth.IsAdmin(actor.Role) {
+		return response.Err(
+			"FORBIDDEN",
+			"Hanya kepala atau admin yang dapat menghapus pemeriksaan",
+			http.StatusForbidden,
+		)
+	}
+
+	if id <= 0 {
+		return response.Err(
+			"VALIDATION_ERROR",
+			"ID pemeriksaan tidak valid",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	ins, err := s.Repo.GetInspection(id)
+	if err != nil {
+		return err
+	}
+	if ins == nil {
 		return response.Err(
 			"NOT_FOUND",
 			"Inspection not found",
@@ -648,14 +777,68 @@ func (s *Service) DeleteInspection(actor *model.User, id int64) error {
 		)
 	}
 
+	if strings.EqualFold(strings.TrimSpace(ins.Status), StatusApproved) {
+		return response.Err(
+			"INSPECTION_LOCKED",
+			"Pemeriksaan yang sudah disetujui tidak dapat dihapus",
+			http.StatusConflict,
+		)
+	}
+
+	err = s.Repo.SoftDeleteInspection(id)
+	if err == sql.ErrNoRows {
+		return response.Err(
+			"NOT_FOUND",
+			"Inspection not found",
+			http.StatusNotFound,
+		)
+	}
 	if err != nil {
 		return err
 	}
 
+	roomName := fmt.Sprintf("Ruangan #%d", ins.RoomID)
+	if ins.Room != nil && strings.TrimSpace(ins.Room.Name) != "" {
+		roomName = ins.Room.Name
+	}
+
+	s.recordAudit(
+		actor,
+		"DELETE_INSPECTION",
+		"inspection",
+		id,
+		map[string]interface{}{
+			"id":               ins.ID,
+			"room_id":          ins.RoomID,
+			"room_name":        roomName,
+			"inspection_month": ins.InspectionMonth.Format("2006-01-02"),
+			"status":           ins.Status,
+			"notes":            ins.Notes,
+		},
+		nil,
+		ipAddress,
+	)
+
 	return nil
 }
 
-func (s *Service) ReplaceChecklistForDate(inspectionID int64, answerDate time.Time, items []model.ChecklistAnswer) error {
+func (s *Service) ReplaceChecklistForDate(actor *model.User, inspectionID int64, answerDate time.Time, items []model.ChecklistAnswer) error {
+	if actor == nil {
+		return response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
+
+	if !auth.IsAnggota(actor.Role) && !auth.IsAdmin(actor.Role) && !auth.IsKepala(actor.Role) {
+		return response.Err(
+			"FORBIDDEN",
+			"Hanya petugas pemeriksa, kepala, atau admin yang dapat mengubah checklist",
+			http.StatusForbidden,
+		)
+	}
+
 	// Check that the inspection exists.
 	ins, err := s.Repo.GetInspection(inspectionID)
 	if err != nil {
@@ -666,6 +849,15 @@ func (s *Service) ReplaceChecklistForDate(inspectionID int64, answerDate time.Ti
 			"NOT_FOUND",
 			"Inspection not found",
 			http.StatusNotFound,
+		)
+	}
+
+	// Only the assigned inspector or an admin may change answers.
+	if !auth.IsKepala(actor.Role) && !auth.IsAdmin(actor.Role) && ins.InspectorID != actor.ID {
+		return response.Err(
+			"FORBIDDEN",
+			"Hanya petugas pemeriksa yang ditugaskan yang dapat mengubah checklist",
+			http.StatusForbidden,
 		)
 	}
 	// Ensure the inspection has a valid month.
@@ -710,12 +902,30 @@ func (s *Service) ReplaceChecklistForDate(inspectionID int64, answerDate time.Ti
 		)
 	}
 	// Prevent duplicate checklist item IDs.
+	roomType := ""
+	if ins.Room != nil {
+		roomType = ins.Room.RoomType
+	}
+	allowedItems, err := s.allowedChecklistItems(roomType)
+	if err != nil {
+		return err
+	}
 	seen := make(map[int64]struct{}, len(items))
 	for _, item := range items {
 		if item.ChecklistItemID <= 0 {
 			return response.Err(
 				"VALIDATION_ERROR",
 				"Invalid checklist item ID",
+				http.StatusUnprocessableEntity,
+			)
+		}
+		if _, ok := allowedItems[item.ChecklistItemID]; !ok {
+			return response.Err(
+				"VALIDATION_ERROR",
+				fmt.Sprintf(
+					"Checklist item %d tidak tersedia untuk tipe ruangan ini",
+					item.ChecklistItemID,
+				),
 				http.StatusUnprocessableEntity,
 			)
 		}
@@ -745,10 +955,10 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 		)
 	}
 
-	if !auth.IsAnggota(actor.Role) {
+	if !auth.IsAnggota(actor.Role) && !auth.IsAdmin(actor.Role) && !auth.IsKepala(actor.Role) {
 		return response.Err(
 			"FORBIDDEN",
-			"Hanya Anggota yang dapat mengubah checklist",
+			"Hanya petugas pemeriksa, kepala, atau admin yang dapat mengubah checklist",
 			http.StatusForbidden,
 		)
 	}
@@ -783,6 +993,14 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 		)
 	}
 
+	if !auth.IsKepala(actor.Role) && !auth.IsAdmin(actor.Role) && inspection.InspectorID != actor.ID {
+		return response.Err(
+			"FORBIDDEN",
+			"Hanya petugas pemeriksa yang ditugaskan yang dapat mengubah checklist",
+			http.StatusForbidden,
+		)
+	}
+
 	if strings.ToUpper(strings.TrimSpace(inspection.Status)) != "OPEN" {
 		return response.Err(
 			"INSPECTION_LOCKED",
@@ -805,6 +1023,15 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 		return err
 	}
 
+	roomType := ""
+	if inspection.Room != nil {
+		roomType = inspection.Room.RoomType
+	}
+	allowedItems, err := s.allowedChecklistItems(roomType)
+	if err != nil {
+		return err
+	}
+
 	answers := make([]model.ChecklistAnswer, 0, len(in.Items))
 	seen := make(map[int64]struct{}, len(in.Items))
 
@@ -813,6 +1040,17 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 			return response.Err(
 				"VALIDATION_ERROR",
 				"Checklist item ID tidak valid",
+				http.StatusUnprocessableEntity,
+			)
+		}
+
+		if _, ok := allowedItems[item.ChecklistItemID]; !ok {
+			return response.Err(
+				"VALIDATION_ERROR",
+				fmt.Sprintf(
+					"Checklist item %d tidak tersedia untuk tipe ruangan ini",
+					item.ChecklistItemID,
+				),
 				http.StatusUnprocessableEntity,
 			)
 		}
@@ -860,12 +1098,126 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 	)
 }
 
+// SaveInspectionDates replaces the checklist answers for several dates in one
+// request. All dates are validated before anything is written.
+func (s *Service) SaveInspectionDates(actor *model.User, inspectionID int64, in SaveInspectionBulkInput) error {
+	if actor == nil {
+		return response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
+
+	if len(in.Days) == 0 {
+		return response.Err(
+			"VALIDATION_ERROR",
+			"Minimal satu tanggal pemeriksaan wajib diisi",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	if !auth.IsAnggota(actor.Role) && !auth.IsAdmin(actor.Role) && !auth.IsKepala(actor.Role) {
+		return response.Err(
+			"FORBIDDEN",
+			"Hanya petugas pemeriksa, kepala, atau admin yang dapat mengubah checklist",
+			http.StatusForbidden,
+		)
+	}
+
+	inspection, err := s.Repo.GetInspection(inspectionID)
+	if err != nil {
+		return err
+	}
+	if inspection == nil {
+		return response.Err(
+			"NOT_FOUND",
+			"Pemeriksaan tidak ditemukan",
+			http.StatusNotFound,
+		)
+	}
+
+	if !auth.IsKepala(actor.Role) && !auth.IsAdmin(actor.Role) && inspection.InspectorID != actor.ID {
+		return response.Err(
+			"FORBIDDEN",
+			"Hanya petugas pemeriksa yang ditugaskan yang dapat mengubah checklist",
+			http.StatusForbidden,
+		)
+	}
+
+	if strings.ToUpper(strings.TrimSpace(inspection.Status)) != StatusOpen {
+		return response.Err(
+			"INSPECTION_LOCKED",
+			"Checklist hanya dapat diubah saat pemeriksaan berstatus OPEN",
+			http.StatusConflict,
+		)
+	}
+
+	if err := assertRoomAccess(actor, inspection.RoomID); err != nil {
+		return err
+	}
+
+	roomType := ""
+	if inspection.Room != nil {
+		roomType = inspection.Room.RoomType
+	}
+	allowedItems, err := s.allowedChecklistItems(roomType)
+	if err != nil {
+		return err
+	}
+
+	answers, err := buildInspectionChecklist(in.Days, inspection.InspectionMonth, allowedItems)
+	if err != nil {
+		return err
+	}
+
+	grouped := make(map[string][]model.ChecklistAnswer)
+	for _, answer := range answers {
+		key := answer.AnswerDate.Format("2006-01-02")
+		grouped[key] = append(grouped[key], answer)
+	}
+
+	dates := make([]string, 0, len(grouped))
+	for key := range grouped {
+		dates = append(dates, key)
+	}
+	sort.Strings(dates)
+
+	for _, key := range dates {
+		answerDate, err := time.Parse("2006-01-02", key)
+		if err != nil {
+			return response.Err(
+				"VALIDATION_ERROR",
+				"Tanggal checklist tidak valid: "+key,
+				http.StatusUnprocessableEntity,
+			)
+		}
+		if err := s.Repo.ReplaceChecklistForDate(
+			inspectionID,
+			answerDate,
+			grouped[key],
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s *Service) UpdateInspectionNotes(actor *model.User, inspectionID int64, notes string) error {
 	if actor == nil {
 		return response.Err(
 			"UNAUTHENTICATED",
 			"User tidak ditemukan",
 			http.StatusUnauthorized,
+		)
+	}
+
+	if !auth.IsAnggota(actor.Role) && !auth.IsAdmin(actor.Role) && !auth.IsKepala(actor.Role) {
+		return response.Err(
+			"FORBIDDEN",
+			"Hanya petugas pemeriksa, kepala, atau admin yang dapat mengubah catatan",
+			http.StatusForbidden,
 		)
 	}
 
@@ -886,6 +1238,14 @@ func (s *Service) UpdateInspectionNotes(actor *model.User, inspectionID int64, n
 			"NOT_FOUND",
 			"Pemeriksaan tidak ditemukan",
 			http.StatusNotFound,
+		)
+	}
+
+	if !auth.IsKepala(actor.Role) && !auth.IsAdmin(actor.Role) && inspection.InspectorID != actor.ID {
+		return response.Err(
+			"FORBIDDEN",
+			"Hanya petugas pemeriksa yang ditugaskan yang dapat mengubah catatan",
+			http.StatusForbidden,
 		)
 	}
 

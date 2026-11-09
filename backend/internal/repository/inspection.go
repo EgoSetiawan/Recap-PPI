@@ -151,7 +151,7 @@ func (r *Repo) loadInspectionExtras(ins *model.Inspection, full bool) error {
 func (r *Repo) GetInspection(id int64) (*model.Inspection, error) {
 	ins, err := scanInspection(
 		r.DB.QueryRow(
-			inspectionSelect+` WHERE i.id = $1`,
+			inspectionSelect+` WHERE i.id = $1 AND i.is_deleted = FALSE`,
 			id,
 		),
 	)
@@ -162,6 +162,26 @@ func (r *Repo) GetInspection(id int64) (*model.Inspection, error) {
 		return nil, err
 	}
 	return ins, nil
+}
+
+// GetInspectionByRoomMonth returns the active inspection for a room and month,
+// or nil when the month is still available.
+func (r *Repo) GetInspectionByRoomMonth(roomID int64, month time.Time) (*model.Inspection, error) {
+	normalized := time.Date(
+		month.Year(),
+		month.Month(),
+		1,
+		0, 0, 0, 0,
+		time.UTC,
+	)
+
+	return scanInspection(
+		r.DB.QueryRow(
+			inspectionSelect+` WHERE i.room_id = $1 AND i.inspection_month = $2 AND i.is_deleted = FALSE`,
+			roomID,
+			normalized,
+		),
+	)
 }
 
 func (r *Repo) CreateInspectionFull(ins *model.Inspection) error {
@@ -247,7 +267,7 @@ func (r *Repo) CreateInspectionFull(ins *model.Inspection) error {
 }
 
 func (r *Repo) ListInspections(f InspectionFilter) ([]model.Inspection, error) {
-	conds := []string{}
+	conds := []string{"i.is_deleted = FALSE"}
 	args := []interface{}{}
 	n := 1
 
@@ -441,6 +461,7 @@ func (r *Repo) ReplaceChecklistForDate(inspectionID int64, answerDate time.Time,
 		`SELECT status, inspection_month
 		   FROM inspections
 		  WHERE id = $1
+		    AND is_deleted = FALSE
 		  FOR UPDATE`,
 		inspectionID,
 	).Scan(&status, &inspectionMonth)
@@ -527,7 +548,10 @@ func (r *Repo) ReplaceChecklistForDate(inspectionID int64, answerDate time.Time,
 }
 
 func (r *Repo) SoftDeleteInspection(id int64) error {
-	result, err := r.DB.Exec(`UPDATE inspections SET is_deleted = TRUE WHERE id = $1 AND is_deleted = FALSE`, id)
+	result, err := r.DB.Exec(
+		`UPDATE inspections SET is_deleted = TRUE, updated_at = NOW() WHERE id = $1 AND is_deleted = FALSE`,
+		id,
+	)
 	if err != nil {
 		return err
 	}
@@ -652,6 +676,7 @@ func (r *Repo) SubmitInspection(actor *model.User, sign *model.Signature) error 
 		WHERE i.id = $1
 		  AND i.inspector_id = $2
 		  AND i.status = 'OPEN'
+		  AND i.is_deleted = FALSE
 		  AND EXISTS (
 			  SELECT 1
 			  FROM inspection_signatures AS s
@@ -692,6 +717,7 @@ func (r *Repo) ApproveInspection(id int64) error {
 			updated_at = NOW()
 		WHERE i.id = $1
 		  AND i.status = 'SUBMITTED'
+		  AND i.is_deleted = FALSE
 		  AND EXISTS (
 			  SELECT 1
 			  FROM inspection_signatures AS s

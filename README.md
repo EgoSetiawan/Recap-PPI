@@ -37,6 +37,17 @@ Both CSS bundles are committed so the static frontend keeps working without a bu
 Presentation lives in CSS; the class strings in `frontend/assets/js/ui.js` only carry
 semantic class names.
 
+## QA checks
+
+Run the backend and frontend quality gates from the repository root:
+
+```bash
+npm run qa
+```
+
+This runs `go test`, `go vet`, ESLint, and Prettier. Database migrations run
+automatically when the API starts (`goose up` in `backend/migrations`).
+
 ## Inspection workflow
 
 1. `OPEN` — ANGGOTA creates the monthly inspection. The signature is attached on
@@ -48,11 +59,17 @@ semantic class names.
 4. `APPROVED` — KEPALA (or SUPER_ADMIN as oversight) approves with
    `POST /inspections/:id/approve`; both signatures are required.
 
-- The petugas slot is only available to the assigned inspector; the kepala slot is
-  only available to `KEPALA`. A kepala can never fill the petugas slot.
+- The petugas slot is available to the assigned inspector. A `KEPALA` may also
+  create an inspection and act as its inspector; the kepalas still review and
+  approve the submitted record.
 - The kepala signature is stored in `inspection_signatures` (`role = KEPALA`) and is
   required before approval.
 - Older records submitted without a petugas signature can still be completed while the
   status is `SUBMITTED`; `APPROVED`/`REJECTED` records are locked.
 - The API authorises by role and returns no permission list, so `api.js` mirrors the
   role capabilities for the UI (`hasPermission`).
+
+## Audit
+
+- Room-assignment changes and inspection deletions are written to `audit_logs`.
+- `GET /audit-logs` lists recent audit entries for `SUPER_ADMIN` and `KEPALA`.

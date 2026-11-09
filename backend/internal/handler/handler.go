@@ -195,6 +195,7 @@ func (h *Handler) CreatePDFReport(c *gin.Context) {
 		middleware.CurrentUser(c), id,
 	)
 	if err != nil {
+		response.Fail(c, err)
 		return
 	}
 	c.Header(
@@ -214,7 +215,7 @@ func (h *Handler) DeleteInspection(c *gin.Context) {
 		response.FailCode(c, "VALIDATION_ERROR", "Invalid id", http.StatusUnprocessableEntity)
 		return
 	}
-	if err := h.Svc.DeleteInspection(middleware.CurrentUser(c), id); err != nil {
+	if err := h.Svc.DeleteInspection(middleware.CurrentUser(c), id, c.ClientIP()); err != nil {
 		response.Fail(c, err)
 		return
 	}
@@ -239,6 +240,22 @@ func (h *Handler) ListRooms(c *gin.Context) {
 	response.OK(c, list, "Rooms retrieved")
 }
 
+func (h *Handler) CreateRoom(c *gin.Context) {
+	var in model.Room
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.FailCode(c, "INVALID_JSON", "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	room, err := h.Svc.CreateRoom(middleware.CurrentUser(c), &in)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.Created(c, room, "Ruangan berhasil ditambahkan")
+}
+
 func (h *Handler) ListUsers(c *gin.Context) {
 	users, err := h.Svc.ListUsers(middleware.CurrentUser(c))
 	if err != nil {
@@ -246,6 +263,23 @@ func (h *Handler) ListUsers(c *gin.Context) {
 		return
 	}
 	response.OK(c, users, "Users retrieved")
+}
+
+func (h *Handler) ListAuditLogs(c *gin.Context) {
+	limit := 100
+	if raw := c.Query("limit"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil {
+			limit = parsed
+		}
+	}
+
+	logs, err := h.Svc.ListAuditLogs(middleware.CurrentUser(c), limit)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.OK(c, logs, "Audit logs retrieved")
 }
 
 func (h *Handler) UpdateUserRooms(c *gin.Context) {
@@ -275,6 +309,7 @@ func (h *Handler) UpdateUserRooms(c *gin.Context) {
 		middleware.CurrentUser(c),
 		id,
 		in.RoomIDs,
+		c.ClientIP(),
 	)
 	if err != nil {
 		response.Fail(c, err)
@@ -344,6 +379,7 @@ func (h *Handler) ReplaceChecklistForDate(c *gin.Context) {
 		return
 	}
 	err = h.Svc.ReplaceChecklistForDate(
+		middleware.CurrentUser(c),
 		id,
 		answerDate,
 		in.Items,
@@ -436,6 +472,44 @@ func (h *Handler) SaveInspectionDate(c *gin.Context) {
 		"inspection_id": id,
 		"answer_date":   in.AnswerDate,
 	}, "Checklist tanggal berhasil disimpan")
+}
+
+func (h *Handler) SaveInspectionDates(c *gin.Context) {
+	id, err := parseID(c, "id")
+	if err != nil || id <= 0 {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"Invalid inspection ID",
+			http.StatusUnprocessableEntity,
+		)
+		return
+	}
+
+	var in service.SaveInspectionBulkInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.FailCode(
+			c,
+			"INVALID_JSON",
+			"Invalid checklist payload",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if err := h.Svc.SaveInspectionDates(
+		middleware.CurrentUser(c),
+		id,
+		in,
+	); err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.OK(c, gin.H{
+		"inspection_id": id,
+		"days":          len(in.Days),
+	}, "Checklist berhasil disimpan")
 }
 
 func (h *Handler) AddKepalaSign(c *gin.Context) {

@@ -19,14 +19,17 @@ const ROLE_PERMISSIONS = {
     "inspections.approve",
     "users.manage",
     "users.assign_rooms",
+    "audit.view",
   ],
   KEPALA: [
     "rooms.manage",
     "checklist.manage",
     "inspections.manage",
+    "inspections.create",
     "inspections.sign",
     "inspections.approve",
     "users.assign_rooms",
+    "audit.view",
   ],
   ANGGOTA: ["inspections.create", "inspections.sign"],
 };

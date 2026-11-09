@@ -1,7 +1,7 @@
 import { requireAuth, api, hasPermission } from "../api.js";
 import { mountShell, toast, openModal } from "../components/shell.js";
 import { escapeHtml, qs } from "../utils/format.js";
-import { btnSecondary, btnSm, formGroup, tableWrap, empty } from "../ui.js";
+import { formGroup, tableWrap, empty } from "../ui.js";
 
 const ROOM_TYPES = {
   INPATIENT: "Rawat Inap",
@@ -72,8 +72,6 @@ async function main() {
           `,
 
           onSubmit: async (data) => {
-            data.floor = Number(data.floor);
-
             await api("/rooms", {
               method: "POST",
               body: data,

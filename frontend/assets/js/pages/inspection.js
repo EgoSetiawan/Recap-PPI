@@ -1,4 +1,4 @@
-import { requireAuth, api } from "../api.js";
+import { requireAuth, api, hasPermission } from "../api.js";
 import { mountShell, toast } from "../components/shell.js";
 import { escapeHtml } from "../utils/format.js";
 
@@ -985,6 +985,11 @@ async function main() {
       label: "Kembali",
     },
   });
+
+  if (!hasPermission("inspections.create")) {
+    showPageError("Hanya anggota PPI yang dapat membuat pemeriksaan.");
+    return;
+  }
 
   renderPage();
 

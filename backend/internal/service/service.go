@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	// "PPI/internal/storage"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type Service struct {
@@ -281,6 +283,78 @@ func (s *Service) ListRoomsWithActors(actor *model.User, q string) ([]model.Room
 	return s.Repo.ListRoomsWithActors(q, scopeRoomIDs(actor))
 }
 
+var supportedRoomTypes = map[string]struct{}{
+	"INPATIENT":       {},
+	"ICU":             {},
+	"ICCU":            {},
+	"OPERATING_ROOM":  {},
+	"EMERGENCY":       {},
+	"CHEMOTHERAPY":    {},
+	"HEMODIALYSIS":    {},
+}
+
+func (s *Service) CreateRoom(actor *model.User, room *model.Room) (*model.Room, error) {
+	if actor == nil {
+		return nil, response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
+
+	if !auth.IsAdmin(actor.Role) && !auth.IsKepala(actor.Role) {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya admin atau kepala PPI yang dapat menambahkan ruangan",
+			http.StatusForbidden,
+		)
+	}
+
+	if room == nil {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Data ruangan wajib diisi",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	room.Name = strings.TrimSpace(room.Name)
+	room.Code = strings.TrimSpace(room.Code)
+	room.RoomType = strings.ToUpper(strings.TrimSpace(room.RoomType))
+	room.Description = strings.TrimSpace(room.Description)
+
+	if room.Name == "" || room.Code == "" || room.RoomType == "" {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Nama, kode, dan tipe ruangan wajib diisi",
+			http.StatusUnprocessableEntity,
+		)
+	}
+	if _, ok := supportedRoomTypes[room.RoomType]; !ok {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Tipe ruangan tidak valid",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	if err := s.Repo.CreateRoom(room); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) &&
+			pgErr.Code == "23505" &&
+			pgErr.ConstraintName == "rooms_code_key" {
+			return nil, response.Err(
+				"ROOM_EXISTS",
+				"Kode ruangan sudah digunakan",
+				http.StatusConflict,
+			)
+		}
+		return nil, err
+	}
+
+	return room, nil
+}
+
 func canManageUserRooms(actor *model.User) bool {
 	return actor != nil && (auth.IsAdmin(actor.Role) || auth.IsKepala(actor.Role))
 }
@@ -309,7 +383,7 @@ func (s *Service) ListUsers(actor *model.User) ([]model.User, error) {
 }
 
 // UpdateUserRooms replaces the rooms assigned to an Anggota PPI.
-func (s *Service) UpdateUserRooms(actor *model.User, userID int64, roomIDs []int64) (*model.User, error) {
+func (s *Service) UpdateUserRooms(actor *model.User, userID int64, roomIDs []int64, ipAddress string) (*model.User, error) {
 	if !canManageUserRooms(actor) {
 		return nil, response.Err(
 			"FORBIDDEN",
@@ -346,6 +420,8 @@ func (s *Service) UpdateUserRooms(actor *model.User, userID int64, roomIDs []int
 		)
 	}
 
+	oldRoomIDs := append([]int64{}, target.AssignedRoomIDs...)
+
 	normalized := make([]int64, 0, len(roomIDs))
 	seen := make(map[int64]struct{}, len(roomIDs))
 
@@ -381,6 +457,28 @@ func (s *Service) UpdateUserRooms(actor *model.User, userID int64, roomIDs []int
 
 	if err := s.Repo.ChangeAssignPersonRoom(target); err != nil {
 		return nil, err
+	}
+
+	if !sameIDs(oldRoomIDs, normalized) {
+		rooms, _ := s.Repo.ListRooms("", "", "", nil)
+		oldNames := roomNames(rooms, oldRoomIDs)
+		newNames := roomNames(rooms, normalized)
+
+		s.recordAudit(
+			actor,
+			"UPDATE_USER_ROOMS",
+			"user",
+			userID,
+			map[string]interface{}{
+				"room_ids":   oldRoomIDs,
+				"room_names": oldNames,
+			},
+			map[string]interface{}{
+				"room_ids":   normalized,
+				"room_names": newNames,
+			},
+			ipAddress,
+		)
 	}
 
 	return publicUser(target), nil

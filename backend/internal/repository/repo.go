@@ -401,6 +401,18 @@ func (r *Repo) GetRoom(id int64) (*model.Room, error) {
 	return r.scanRoom(r.DB.QueryRow(roomSelect+` WHERE r.id=$1`, id))
 }
 
+func (r *Repo) CreateRoom(room *model.Room) error {
+	return r.DB.QueryRow(
+		`INSERT INTO rooms (name, code, room_type, description)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id, created_at, updated_at`,
+		room.Name,
+		room.Code,
+		room.RoomType,
+		room.Description,
+	).Scan(&room.ID, &room.CreatedAt, &room.UpdatedAt)
+}
+
 func (r *Repo) GetRoomWithActors(id int64) (*model.Room, error) {
 	return r.scanRoom(r.DB.QueryRow(RoomWithActors+` WHERE r.id=$1`, id))
 }
@@ -571,35 +583,105 @@ func (r *Repo) ListChecklist(roomType string) ([]model.ChecklistItem, error) {
 	return out, rows.Err()
 }
 
-func (r *Repo) LogActions(userID *int64, action, entityType string, entityID *int64, oldValue, newValue interface{}) error {
-	var oldB, newB []byte
-	var err error
+func (r *Repo) CreateAuditLog(userID *int64, action, entityType string, entityID *int64, oldValue, newValue interface{}, ipAddress string) error {
+	var oldJSON, newJSON interface{}
 	if oldValue != nil {
-		oldB, err = json.Marshal(oldValue)
+		value, err := json.Marshal(oldValue)
 		if err != nil {
 			return err
 		}
+		oldJSON = string(value)
 	}
 	if newValue != nil {
-		newB, err = json.Marshal(newValue)
+		value, err := json.Marshal(newValue)
 		if err != nil {
 			return err
 		}
+		newJSON = string(value)
 	}
-	_, err = r.DB.Exec(
+
+	_, err := r.DB.Exec(
 		`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, old_value, new_value, ip_address)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-		nullInt64(userID), action, entityType, nullInt64(entityID), nullJSON(oldB), nullJSON(newB),
+		 VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7)`,
+		nullInt64(userID), action, entityType, nullInt64(entityID), oldJSON, newJSON, strings.TrimSpace(ipAddress),
 	)
 	return err
 }
 
-func nullJSON(b []byte) interface{} {
-	if len(b) == 0 {
-		return nil
+func (r *Repo) ListAuditLogs(limit int) ([]model.AuditLog, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
 	}
-	return b
+
+	rows, err := r.DB.Query(`
+		SELECT
+			a.id,
+			a.user_id,
+			COALESCE(u.name, ''),
+			a.action,
+			a.entity_type,
+			a.entity_id,
+			COALESCE(t.name, ''),
+			a.old_value,
+			a.new_value,
+			a.ip_address,
+			a.created_at
+		FROM audit_logs a
+		LEFT JOIN users u ON u.id = a.user_id
+		LEFT JOIN users t ON a.entity_type = 'user' AND t.id = a.entity_id
+		ORDER BY a.created_at DESC, a.id DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	logs := make([]model.AuditLog, 0)
+	for rows.Next() {
+		var item model.AuditLog
+		var userID sql.NullInt64
+		var entityID sql.NullInt64
+		var oldRaw, newRaw []byte
+
+		if err := rows.Scan(
+			&item.ID,
+			&userID,
+			&item.UserName,
+			&item.Action,
+			&item.EntityType,
+			&entityID,
+			&item.EntityName,
+			&oldRaw,
+			&newRaw,
+			&item.IPAddress,
+			&item.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		if userID.Valid {
+			value := userID.Int64
+			item.UserID = &value
+		}
+		if entityID.Valid {
+			value := entityID.Int64
+			item.EntityID = &value
+		}
+
+		if len(oldRaw) > 0 {
+			_ = json.Unmarshal(oldRaw, &item.OldValue)
+		}
+		if len(newRaw) > 0 {
+			_ = json.Unmarshal(newRaw, &item.NewValue)
+		}
+
+		logs = append(logs, item)
+	}
+
+	return logs, rows.Err()
 }
+
 
 func (r *Repo) CreateChecklistItem(c *model.ChecklistItem) error {
 	return r.DB.QueryRow(
