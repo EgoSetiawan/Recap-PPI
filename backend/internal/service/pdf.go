@@ -280,14 +280,20 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		}
 	}
 
-	anggotaDisplayName, anggotaDisplayNip := actor.Name, actor.Nip
+	anggotaDisplayName := ""
 	if anggotaSignature != nil {
-		if name := strings.TrimSpace(anggotaSignature.SignerName); name != "" {
-			anggotaDisplayName = name
+		anggotaDisplayName = strings.TrimSpace(anggotaSignature.SignerName)
+	}
+
+	// Fall back to the assigned inspector, not the person downloading the PDF.
+	if anggotaDisplayName == "" && ins.InspectorID > 0 {
+		if inspector, err := s.Repo.GetByID(ins.InspectorID); err == nil && inspector != nil {
+			anggotaDisplayName = strings.TrimSpace(inspector.Name)
 		}
-		if nip := s.signatureSignerNip(anggotaSignature); nip != "" {
-			anggotaDisplayNip = nip
-		}
+	}
+
+	if anggotaDisplayName == "" {
+		anggotaDisplayName = actor.Name
 	}
 
 	m.AddRow(
@@ -338,25 +344,20 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		),
 	)
 
-	m.AddRow(
-		5,
-		text.NewCol(
-			18,
-			"NIP. "+ketuaDisplayNip,
-			props.Text{
-				Size:  8,
-				Align: align.Center,
-			},
-		),
-		text.NewCol(
-			18,
-			"NIP. "+anggotaDisplayNip,
-			props.Text{
-				Size:  8,
-				Align: align.Center,
-			},
-		),
-	)
+	if strings.TrimSpace(ketuaDisplayNip) != "" {
+		m.AddRow(
+			5,
+			text.NewCol(
+				18,
+				"NIP. "+ketuaDisplayNip,
+				props.Text{
+					Size:  8,
+					Align: align.Center,
+				},
+			),
+			text.NewCol(18, "", props.Text{Size: 8}),
+		)
+	}
 
 	// GENERATE
 	doc, err := m.Generate()
@@ -555,33 +556,6 @@ func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items 
 					},
 				).WithStyle(style),
 			)
-
-			////// THIS IS USING CHECKBOX RECONSIDER FOR USING THIS
-			// if status == "GOOD" {
-			// 	row = append(
-			// 		row,
-			// 		checkbox.NewCol(
-			// 			1,
-			// 			"",
-			// 			props.Checkbox{
-			// 				Checked: true,
-			// 				Size:    3,
-			// 				Top:     0.4,
-			// 			},
-			// 		).WithStyle(style),
-			// 	)
-			// } else {
-			// 	row = append(
-			// 		row,
-			// 		text.NewCol(
-			// 			1,
-			// 			"",
-			// 			props.Text{
-			// 				Size: 5,
-			// 			},
-			// 		).WithStyle(style),
-			// 	)
-			// }
 		}
 		m.AddRow(12, row...)
 	}

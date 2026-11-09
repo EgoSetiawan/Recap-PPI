@@ -62,6 +62,7 @@ async function main() {
                 <option value="EMERGENCY">IGD</option>
                 <option value="CHEMOTHERAPY">Kemoterapi</option>
                 <option value="HEMODIALYSIS">Hemodialisa</option>
+                <option value="Poliklinik">Poliklinik</option>
               </select>
             </div>
 

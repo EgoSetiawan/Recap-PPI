@@ -55,14 +55,6 @@ func publicUser(u *model.User) *model.User {
 	return &cp
 }
 
-// func uid(u *model.User) *int64 {
-// 	if u == nil {
-// 		return nil
-// 	}
-// 	id := u.ID
-// 	return &id
-// }
-
 // --- Auth ---
 
 type LoginInput struct {
@@ -284,13 +276,13 @@ func (s *Service) ListRoomsWithActors(actor *model.User, q string) ([]model.Room
 }
 
 var supportedRoomTypes = map[string]struct{}{
-	"INPATIENT":       {},
-	"ICU":             {},
-	"ICCU":            {},
-	"OPERATING_ROOM":  {},
-	"EMERGENCY":       {},
-	"CHEMOTHERAPY":    {},
-	"HEMODIALYSIS":    {},
+	"INPATIENT":      {},
+	"ICU":            {},
+	"ICCU":           {},
+	"OPERATING_ROOM": {},
+	"EMERGENCY":      {},
+	"CHEMOTHERAPY":   {},
+	"HEMODIALYSIS":   {},
 }
 
 func (s *Service) CreateRoom(actor *model.User, room *model.Room) (*model.Room, error) {
