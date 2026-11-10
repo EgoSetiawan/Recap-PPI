@@ -409,6 +409,15 @@ async function setupDailyChecklist(inspection, options = {}) {
    * Capture what is currently visible.
    * This updates an existing draft before changing dates.
    */
+  function statusFieldValue(row) {
+    const field = row.querySelector("[data-status]");
+
+    if (!field) return null;
+    if (field.type === "checkbox") return field.checked ? "GOOD" : null;
+
+    return field.value || null;
+  }
+
   function captureVisibleDraft() {
     if (!isEditable) return;
 
@@ -420,7 +429,7 @@ async function setupDailyChecklist(inspection, options = {}) {
 
     const items = rows.map((row) => ({
       checklist_item_id: Number(row.dataset.itemId),
-      status: row.querySelector("[data-status]")?.value || null,
+      status: statusFieldValue(row),
       notes: row.querySelector("[data-notes]")?.value.trim() || "",
     }));
 
@@ -442,7 +451,7 @@ async function setupDailyChecklist(inspection, options = {}) {
 
     const items = rows.map((row) => ({
       checklist_item_id: Number(row.dataset.itemId),
-      status: row.querySelector("[data-status]")?.value || null,
+      status: statusFieldValue(row),
       notes: row.querySelector("[data-notes]")?.value.trim() || "",
     }));
 
@@ -494,6 +503,7 @@ async function setupDailyChecklist(inspection, options = {}) {
       const selected = date === dateInput.value;
       const dirty = draftDays.has(date);
       const hasData = hasMeaningfulData(date);
+      const isSunday = (firstWeekday + index) % 7 === 0;
 
       const complete = p.total > 0 && p.completed >= p.total;
 
@@ -508,7 +518,7 @@ async function setupDailyChecklist(inspection, options = {}) {
       return `
           <button
             type="button"
-            class="inspection-calendar__day${selected ? " is-selected" : ""}${dirty ? " is-dirty" : ""}"
+            class="inspection-calendar__day${selected ? " is-selected" : ""}${dirty ? " is-dirty" : ""}${isSunday ? " is-sunday" : ""}"
             data-edit-date="${date}"
             aria-pressed="${selected}"
             aria-label="Tanggal ${day}, ${monthTitle}. ${escapeHtml(p.label)}${dirty ? ". Ada perubahan belum disimpan" : ""}"
@@ -704,25 +714,15 @@ async function setupDailyChecklist(inspection, options = {}) {
                               ${
                                 isEditable
                                   ? `
-                                    <select
-                                      data-status
-                                      aria-label="Penilaian ${escapeHtml(item.name || "")}"
-                                      class="checklist-rating"
-                                    >
-                                      <option
-                                        value=""
-                                        ${!currentStatus ? "selected" : ""}
-                                      >
-                                        Belum dinilai
-                                      </option>
-
-                                      <option
-                                        value="GOOD"
-                                        ${currentStatus === "GOOD" ? "selected" : ""}
-                                      >
-                                        Baik
-                                      </option>
-                                    </select>
+                                    <label class="checklist-check">
+                                      <input
+                                        type="checkbox"
+                                        data-status
+                                        aria-label="Baik untuk ${escapeHtml(item.name || "item checklist")}"
+                                        ${currentStatus === "GOOD" ? "checked" : ""}
+                                      />
+                                      <span>Baik</span>
+                                    </label>
                                   `
                                   : `
                                     <span>

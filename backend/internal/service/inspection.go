@@ -1,7 +1,6 @@
 package service
 
 import (
-	// "mime/multipart"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"PPI/internal/model"
 	"PPI/internal/repository"
 	"PPI/internal/response"
-	// "PPI/internal/storage"
 
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -54,7 +52,6 @@ type CreateInspectionInput struct {
 }
 
 type SubmitInspectionInput struct {
-	// Notes     string            `json:"notes"`
 	Signature *SignaturePayload `json:"signature" binding:"required"`
 }
 

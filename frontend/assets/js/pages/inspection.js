@@ -477,10 +477,24 @@ function dateKey(day) {
 function currentDayItems() {
   const rows = [...document.querySelectorAll("#create-daily-checklist tr[data-item-id]")];
 
-  return rows.map((row) => ({
-    checklist_item_id: Number(row.dataset.itemId),
-    status: row.querySelector("[data-status]")?.value || null,
-  }));
+  return rows.map((row) => {
+    const statusField = row.querySelector("[data-status]");
+
+    let status = null;
+    if (statusField) {
+      status =
+        statusField.type === "checkbox"
+          ? statusField.checked
+            ? "GOOD"
+            : null
+          : statusField.value || null;
+    }
+
+    return {
+      checklist_item_id: Number(row.dataset.itemId),
+      status,
+    };
+  });
 }
 
 function captureCurrentDay(force = false) {
@@ -548,6 +562,7 @@ function renderCreateCalendar() {
 
     const selected = date === selectedDate;
     const complete = definitions.length > 0 && completed === definitions.length;
+    const isSunday = (firstWeekday + index) % 7 === 0;
 
     let statusText = "—";
 
@@ -560,7 +575,7 @@ function renderCreateCalendar() {
     return `
         <button
           type="button"
-          class="inspection-calendar__day${selected ? " is-selected" : ""}${draft ? " is-dirty" : ""}"
+          class="inspection-calendar__day${selected ? " is-selected" : ""}${draft ? " is-dirty" : ""}${isSunday ? " is-sunday" : ""}"
           data-create-date="${date}"
           aria-pressed="${selected}"
           aria-label="Tanggal ${day}, ${escapeHtml(monthTitle)}"
@@ -730,24 +745,15 @@ function renderCreateDay() {
                           </td>
 
                           <td>
-                            <select
-                              data-status
-                              aria-label="Penilaian ${escapeHtml(definition.name || "item checklist")}"
-                            >
-                              <option
-                                value=""
-                                ${!currentStatus ? "selected" : ""}
-                              >
-                                Belum dinilai
-                              </option>
-
-                              <option
-                                value="GOOD"
-                                ${currentStatus === "GOOD" ? "selected" : ""}
-                              >
-                                Baik
-                              </option>
-                            </select>
+                            <label class="checklist-check">
+                              <input
+                                type="checkbox"
+                                data-status
+                                aria-label="Baik untuk ${escapeHtml(definition.name || "item checklist")}"
+                                ${currentStatus === "GOOD" ? "checked" : ""}
+                              />
+                              <span>Baik</span>
+                            </label>
                           </td>
                         </tr>
                       `;

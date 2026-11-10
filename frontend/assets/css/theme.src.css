@@ -2651,7 +2651,7 @@ table.data .row-actions .btn {
 }
 
 .inspection-calendar__weekday.is-sunday {
-  color: #d9776f;
+  color: #dc2626;
 }
 
 .inspection-calendar__blank {
@@ -2730,6 +2730,11 @@ table.data .row-actions .btn {
   background: transparent;
   box-shadow: none;
   color: #fff;
+}
+
+#detail-root .inspection-calendar__day.is-sunday:not(.is-selected) .inspection-calendar__day-number,
+.inspection-calendar__day.is-sunday:not(.is-selected) .inspection-calendar__day-number {
+  color: #dc2626;
 }
 
 .inspection-calendar__day-status {
@@ -2884,6 +2889,26 @@ table.data .row-actions .btn {
   color: var(--color-text);
   font-size: 12.5px;
   box-shadow: none;
+}
+
+.checklist-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--color-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.checklist-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: #3b5bfd;
+  cursor: pointer;
 }
 
 .item-note,
