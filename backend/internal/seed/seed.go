@@ -30,17 +30,6 @@ type SeedUser struct {
 	UpdatedAt       string  `json:"updated_at"`
 }
 
-type SeedHospital struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	Code      string `json:"code"`
-	Address   string `json:"address"`
-	Phone     string `json:"phone"`
-	Email     string `json:"email"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-}
-
 type SeedRoom struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
@@ -75,7 +64,6 @@ type SeedInspection struct {
 type SeedFile struct {
 	Roles          []SeedRole          `json:"roles"`
 	Users          []SeedUser          `json:"users"`
-	Hospitals      []SeedHospital      `json:"hospitals"`
 	Rooms          []SeedRoom          `json:"rooms"`
 	Inspections    []SeedInspection    `json:"inspections"`
 	ChecklistItems []SeedChecklistItem `json:"checklist_items"`
@@ -129,17 +117,6 @@ func validateSeed(sf *SeedFile) error {
 		}
 
 		userIDs[user.ID] = true
-	}
-
-	hospitalIDs := map[int64]bool{}
-	for _, hospital := range sf.Hospitals {
-		if hospital.ID <= 0 || hospitalIDs[hospital.ID] {
-			return fmt.Errorf(
-				"seed hospital id %d is duplicated or invalid",
-				hospital.ID,
-			)
-		}
-		hospitalIDs[hospital.ID] = true
 	}
 
 	roomIDs := map[int64]bool{}
@@ -273,26 +250,6 @@ func Run(db *sql.DB, path string) error {
 			parseTime(user.UpdatedAt),
 		); err != nil {
 			return fmt.Errorf("user %d: %w", user.ID, err)
-		}
-	}
-
-	// 3. Hospitals.
-	for _, hospital := range sf.Hospitals {
-		if _, err := tx.Exec(
-			`INSERT INTO hospitals
-				(id, name, code, address, phone, email, created_at, updated_at)
-			 VALUES
-				($1, $2, $3, $4, $5, $6, $7, $8)`,
-			hospital.ID,
-			hospital.Name,
-			hospital.Code,
-			hospital.Address,
-			hospital.Phone,
-			hospital.Email,
-			parseTime(hospital.CreatedAt),
-			parseTime(hospital.UpdatedAt),
-		); err != nil {
-			return fmt.Errorf("hospital %d: %w", hospital.ID, err)
 		}
 	}
 
@@ -431,7 +388,6 @@ func Run(db *sql.DB, path string) error {
 	seqs := []string{
 		"roles",
 		"users",
-		"hospitals",
 		"rooms",
 		"checklist_items",
 		"inspections",
@@ -478,12 +434,4 @@ func Run(db *sql.DB, path string) error {
 	}
 
 	return nil
-}
-
-func parseTimePtr(s *string) interface{} {
-	if s == nil || *s == "" {
-		return nil
-	}
-
-	return parseTime(*s)
 }

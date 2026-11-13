@@ -174,45 +174,6 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 			},
 		),
 	)
-	// CHECKLIST LEGEND
-	// m.AddRow(
-	// 	5,
-	// 	text.NewCol(
-	// 		12,
-	// 		"KETERANGAN ITEM PEMERIKSAAN",
-	// 		props.Text{
-	// 			Size:  8,
-	// 			Style: fontstyle.Bold,
-	// 		},
-	// 	),
-	// )
-
-	// for i, item := range pdfData.Items {
-	// 	m.AddAutoRow(
-	// 		text.NewCol(
-	// 			1,
-	// 			fmt.Sprintf("%d", i+1),
-	// 			props.Text{
-	// 				Size:  7,
-	// 				Align: align.Center,
-	// 			},
-	// 		).WithStyle(monthlyCellStyle()),
-
-	// 		text.NewCol(
-	// 			11,
-	// 			item.Name,
-	// 			props.Text{
-	// 				Size:   7,
-	// 				Align:  align.Left,
-	// 				Top:    0.5,
-	// 				Left:   1,
-	// 				Right:  1,
-	// 				Bottom: 0.5,
-	// 			},
-	// 		).WithStyle(monthlyCellStyle()),
-	// 	)
-	// }
-
 	// MONTH MATRIX
 	addMonthlyChecklistMatrix(
 		m,
