@@ -300,7 +300,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		5,
 		text.NewCol(
 			18,
-			"Ketua PPI",
+			"Sekretaris Komite PPI",
 			props.Text{
 				Size:  9,
 				Align: align.Center,
@@ -308,7 +308,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		),
 		text.NewCol(
 			18,
-			"Yang Mengetahui",
+			"IPCLN",
 			props.Text{
 				Size:  9,
 				Align: align.Center,

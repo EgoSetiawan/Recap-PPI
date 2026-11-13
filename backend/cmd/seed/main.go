@@ -54,6 +54,9 @@ func main() {
 
 	if _, err := db.Exec(`
 		TRUNCATE
+			hospitals,
+			checklist_items,
+			inspections,
 			rooms,
 			users,
 			roles
