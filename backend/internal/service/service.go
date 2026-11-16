@@ -201,9 +201,7 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 	for _, room := range rooms {
 		roomByID[room.ID] = room
 	}
-	// Get latest inspection for each room.
-	// ListInspections() is ordered by month DESC, id DESC,
-	// so the first inspection found for a room is its latest one.
+	// Latest inspection per room.
 	latestByRoom := make(map[int64]model.Inspection)
 	for _, ins := range inspections {
 		if _, exists := latestByRoom[ins.RoomID]; exists {
@@ -351,7 +349,7 @@ func canManageUserRooms(actor *model.User) bool {
 	return actor != nil && (auth.IsAdmin(actor.Role) || auth.IsKepala(actor.Role))
 }
 
-// ListUsers returns the user directory used by the room-assignment screen.
+// Returns users for room assignment.
 func (s *Service) ListUsers(actor *model.User) ([]model.User, error) {
 	if !canManageUserRooms(actor) {
 		return nil, response.Err(
@@ -374,7 +372,7 @@ func (s *Service) ListUsers(actor *model.User) ([]model.User, error) {
 	return out, nil
 }
 
-// UpdateUserRooms replaces the rooms assigned to an Anggota PPI.
+// Replaces a user's room assignments.
 func (s *Service) UpdateUserRooms(actor *model.User, userID int64, roomIDs []int64, ipAddress string) (*model.User, error) {
 	if !canManageUserRooms(actor) {
 		return nil, response.Err(

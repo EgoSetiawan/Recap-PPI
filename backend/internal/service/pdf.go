@@ -246,7 +246,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		anggotaDisplayName = strings.TrimSpace(anggotaSignature.SignerName)
 	}
 
-	// Fall back to the assigned inspector, not the person downloading the PDF.
+	// Use the assigned inspector as fallback.
 	if anggotaDisplayName == "" && ins.InspectorID > 0 {
 		if inspector, err := s.Repo.GetByID(ins.InspectorID); err == nil && inspector != nil {
 			anggotaDisplayName = strings.TrimSpace(inspector.Name)
@@ -341,8 +341,7 @@ func monthlyCellStyle() *props.Cell {
 	}
 }
 
-// signatureSignerNip resolves the NIP of the user who signed, so the printed
-// name and NIP always belong to the same person.
+// Returns the signer NIP.
 func (s *Service) signatureSignerNip(sig *model.Signature) string {
 	if sig == nil || sig.SignerUserID == nil {
 		return ""
@@ -357,8 +356,7 @@ func (s *Service) signatureSignerNip(sig *model.Signature) string {
 	return strings.TrimSpace(nip)
 }
 
-// signatureImageCol renders the signature image for one PDF column. Missing or
-// unreadable signatures leave the column blank instead of failing the report.
+// Returns the signature image column.
 func signatureImageCol(size int, sig *model.Signature) core.Col {
 	if sig == nil || strings.TrimSpace(sig.ImageDataURL) == "" {
 		return col.New(size)
@@ -381,8 +379,7 @@ func signatureImageCol(size int, sig *model.Signature) core.Col {
 	)
 }
 
-// signatureDataURLToPNG converts a data:image/... URL (PNG, JPEG or WebP) into
-// PNG bytes that maroto can embed in the PDF.
+// Converts a data URL to PNG.
 func signatureDataURLToPNG(dataURL string) ([]byte, error) {
 	raw := strings.TrimSpace(dataURL)
 	if !strings.HasPrefix(raw, "data:image/") {

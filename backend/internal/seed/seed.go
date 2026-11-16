@@ -220,8 +220,7 @@ func Run(db *sql.DB, path string) error {
 		}
 	}
 
-	// 2. Users are seeded before the rest of the application data.
-	// Their room assignments are inserted later after rooms exist.
+	// Seed users before room assignments.
 	for _, user := range sf.Users {
 		hash, err := auth.HashPassword(user.Password)
 		if err != nil {

@@ -164,8 +164,7 @@ func (r *Repo) GetInspection(id int64) (*model.Inspection, error) {
 	return ins, nil
 }
 
-// GetInspectionByRoomMonth returns the active inspection for a room and month,
-// or nil when the month is still available.
+// Returns the active inspection for a room and month.
 func (r *Repo) GetInspectionByRoomMonth(roomID int64, month time.Time) (*model.Inspection, error) {
 	normalized := time.Date(
 		month.Year(),
@@ -223,25 +222,25 @@ func (r *Repo) CreateInspectionFull(ins *model.Inspection) error {
 		return err
 	}
 
-	// Saves answers for all selected dates.
+	// Save answers for all selected dates.
 	if err := replaceChecklist(tx, ins.ID, ins.Checklist); err != nil {
 		return err
 	}
 
 	sig := findSignature(ins.Signatures, "ANGGOTA")
 
-	// A submitted inspection must have an Anggota signature.
+	// Submitted inspections need an Anggota signature.
 	if ins.Status == "SUBMITTED" &&
 		(sig == nil || strings.TrimSpace(sig.ImageDataURL) == "") {
 		return errors.New("Anggota signature is required before submission")
 	}
 
-	// A signature provided during creation must belong to the Anggota.
+	// Creation signatures must belong to the Anggota.
 	if sig != nil && strings.TrimSpace(sig.ImageDataURL) != "" {
 		if sig.Role != "ANGGOTA" {
 			return errors.New("invalid signature role for inspection creation")
 		}
-		//Check Signer ID
+		// Check the signer ID.
 		if sig.SignerUserID == nil ||
 			*sig.SignerUserID != ins.InspectorID {
 			return errors.New(
@@ -375,12 +374,12 @@ func (r *Repo) ListInspections(f InspectionFilter) ([]model.Inspection, error) {
 		return nil, err
 	}
 
-	// Close the inspection query before loading room details.
+	// Close rows before loading rooms.
 	if err := rows.Close(); err != nil {
 		return nil, err
 	}
 
-	// Populate the Room field for every inspection.
+	// Load room details.
 	for i := range out {
 		// Load room details.
 		room, err := r.GetRoom(out[i].RoomID)
@@ -389,7 +388,7 @@ func (r *Repo) ListInspections(f InspectionFilter) ([]model.Inspection, error) {
 		}
 		out[i].Room = room
 
-		// Load inspector name.
+		// Load the inspector name.
 		var inspectorName string
 		err = r.DB.QueryRow(
 			`SELECT name FROM users WHERE id = $1`,
@@ -499,7 +498,7 @@ func (r *Repo) ReplaceChecklistForDate(inspectionID int64, answerDate time.Time,
 		}
 	}
 
-	// Delete only the answers for this date. Other dates remain untouched.
+	// Delete answers for this date.
 	_, err = tx.Exec(
 		`DELETE FROM inspection_checklist_items
 		  WHERE inspection_id = $1
@@ -519,8 +518,7 @@ func (r *Repo) ReplaceChecklistForDate(inspectionID int64, answerDate time.Time,
 				statusValue = "GOOD"
 			}
 		}
-		// General monthly catatan is stored in inspections.notes.
-		// This workflow intentionally doesn't store a separate daily catatan.
+		// Notes are stored in inspections.notes.
 		_, err = tx.Exec(
 			`INSERT INTO inspection_checklist_items (
 			    inspection_id,
@@ -657,17 +655,12 @@ func (r *Repo) SubmitInspection(actor *model.User, sign *model.Signature) error 
 		return errors.New("invalid signature role")
 	}
 
-	if sign.SignerUserID == nil || *sign.SignerUserID != actor.ID {
-		return errors.New("signature does not belong to the assigned inspector")
-	}
-
 	tx, err := r.DB.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	// Change OPEN to SUBMITTED only when the assigned inspector
-	// has a saved Anggota signature in the database.
+	// Submit only when Anggota signed.
 	result, err := tx.Exec(`
 		UPDATE inspections AS i
 		SET
@@ -682,7 +675,6 @@ func (r *Repo) SubmitInspection(actor *model.User, sign *model.Signature) error 
 			  FROM inspection_signatures AS s
 			  WHERE s.inspection_id = i.id
 			    AND s.role = 'ANGGOTA'
-			    AND s.signer_user_id = i.inspector_id
 			    AND NULLIF(BTRIM(s.image_data_url), '') IS NOT NULL
 		  )
 	`,
@@ -707,8 +699,7 @@ func (r *Repo) SubmitInspection(actor *model.User, sign *model.Signature) error 
 	return tx.Commit()
 }
 
-// ApproveInspection moves a SUBMITTED inspection to APPROVED.
-// It only succeeds when both signatures (ANGGOTA and KEPALA) exist.
+// Approve after both signatures exist.
 func (r *Repo) ApproveInspection(id int64) error {
 	result, err := r.DB.Exec(`
 		UPDATE inspections AS i

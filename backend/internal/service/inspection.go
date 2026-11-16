@@ -75,7 +75,7 @@ func validSignatureImage(url string) bool {
 		return false
 	}
 
-	// Decode the image so malformed data URLs cannot be persisted.
+	// Checks whether the signature image is valid.
 	_, err := signatureDataURLToPNG(u)
 	return err == nil
 }
@@ -88,6 +88,11 @@ func findSignatureByRole(signatures []model.Signature, role string) *model.Signa
 	}
 
 	return nil
+}
+
+// Checks whether a role has signed.
+func hasSignature(signatures []model.Signature, role string) bool {
+	return findSignatureByRole(signatures, role) != nil
 }
 
 func buildInspectionChecklist(days []SaveInspectionDateInput, month time.Time, allowedItems map[int64]struct{}) ([]model.ChecklistAnswer, error) {
@@ -236,7 +241,7 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 		return nil, err
 	}
 
-	// The kepala only signs the review stage, after the petugas submitted.
+	// Kepala signs after submit.
 	status := strings.ToUpper(strings.TrimSpace(ins.Status))
 
 	if status == StatusApproved {
@@ -255,12 +260,20 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 		)
 	}
 
-	// A kepala signature is only meaningful once the petugas signed.
-	if findSignatureByRole(ins.Signatures, "ANGGOTA") == nil {
+	// Kepala signs only after Anggota.
+	if !hasSignature(ins.Signatures, "ANGGOTA") {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
 			"Tanda tangan petugas pemeriksa belum tersedia",
 			http.StatusUnprocessableEntity,
+		)
+	}
+
+	if hasSignature(ins.Signatures, "KEPALA") {
+		return nil, response.Err(
+			"INVALID_STATUS",
+			"Tanda tangan kepala ruangan sudah tersimpan",
+			http.StatusConflict,
 		)
 	}
 
@@ -289,7 +302,7 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 		SignedAt:     time.Now().UTC(),
 	}
 
-	// Persist the signature so it can be shown and used for approval.
+	// Save the signature.
 	if err := s.Repo.UpsertSignature(sig); err != nil {
 		return nil, err
 	}
@@ -297,9 +310,7 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 	return sig, nil
 }
 
-// ApproveInspection marks a submitted inspection as approved.
-// Kepala PPI (and Super Admin, as oversight) can approve, and only
-// after both the petugas and the kepala signatures are stored.
+// ApproveInspection approves an inspection after both signatures exist.
 func (s *Service) ApproveInspection(actor *model.User, id int64) (*model.Inspection, error) {
 	if actor == nil {
 		return nil, response.Err(
@@ -348,7 +359,8 @@ func (s *Service) ApproveInspection(actor *model.User, id int64) (*model.Inspect
 		)
 	}
 
-	if findSignatureByRole(ins.Signatures, "ANGGOTA") == nil {
+	// Anggota must sign first.
+	if !hasSignature(ins.Signatures, "ANGGOTA") {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
 			"Tanda tangan petugas pemeriksa belum tersedia",
@@ -356,7 +368,8 @@ func (s *Service) ApproveInspection(actor *model.User, id int64) (*model.Inspect
 		)
 	}
 
-	if findSignatureByRole(ins.Signatures, "KEPALA") == nil {
+	// Kepala must sign before approval.
+	if !hasSignature(ins.Signatures, "KEPALA") {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
 			"Tanda tangan kepala ruangan belum tersedia",
@@ -380,10 +393,10 @@ func (s *Service) AddAnggotaSignature(actor *model.User, imageDataURL string, id
 		)
 	}
 
-	if !auth.IsAnggota(actor.Role) && !auth.IsAdmin(actor.Role) && !auth.IsKepala(actor.Role) {
+	if !auth.IsAnggota(actor.Role) {
 		return nil, response.Err(
 			"FORBIDDEN",
-			"Hanya pengguna yang berwenang yang dapat menandatangani sebagai petugas pemeriksa",
+			"Hanya anggota PPI yang dapat menandatangani sebagai petugas pemeriksa",
 			http.StatusForbidden,
 		)
 	}
@@ -400,20 +413,10 @@ func (s *Service) AddAnggotaSignature(actor *model.User, imageDataURL string, id
 			http.StatusNotFound,
 		)
 	}
-	// Only the assigned inspector may sign as Anggota.
-	if ins.InspectorID != actor.ID {
-		return nil, response.Err(
-			"FORBIDDEN",
-			"Hanya petugas pemeriksa yang ditugaskan dapat menandatangani",
-			http.StatusForbidden,
-		)
-	}
 
 	status := strings.ToUpper(strings.TrimSpace(ins.Status))
 
-	// Drafts can be signed (and re-signed). A SUBMITTED inspection may
-	// still receive a missing petugas signature so older records that
-	// were sent without one can be completed. Final records are locked.
+	// OPEN and SUBMITTED inspections can be signed.
 	if status != StatusOpen && status != StatusSubmitted {
 		return nil, response.Err(
 			"INVALID_STATUS",
@@ -422,7 +425,7 @@ func (s *Service) AddAnggotaSignature(actor *model.User, imageDataURL string, id
 		)
 	}
 
-	if status == StatusSubmitted && findSignatureByRole(ins.Signatures, "ANGGOTA") != nil {
+	if status == StatusSubmitted && hasSignature(ins.Signatures, "ANGGOTA") {
 		return nil, response.Err(
 			"INVALID_STATUS",
 			"Tanda tangan petugas sudah tersimpan",
@@ -453,7 +456,7 @@ func (s *Service) AddAnggotaSignature(actor *model.User, imageDataURL string, id
 		ImageDataURL: imageDataURL,
 		SignedAt:     time.Now().UTC(),
 	}
-	// Insert or update the Anggota signature.
+	// Save the Anggota signature.
 	if err := s.Repo.UpsertSignature(sig); err != nil {
 		return nil, err
 	}
@@ -577,7 +580,7 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		Checklist:       checklist,
 		Signatures:      signatures,
 	}
-	// Create the monthly inspection once.
+	// Create the inspection.
 	if err := s.Repo.CreateInspectionFull(ins); err != nil {
 		if isInspectionRoomMonthConflict(err) {
 			return nil, inspectionExistsError(room.Name, month)
@@ -587,8 +590,7 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 	return s.Repo.GetInspection(ins.ID)
 }
 
-// inspectionExistsError builds the shared conflict response for a room/month
-// that is already occupied by an active inspection.
+// Returns the duplicate inspection error.
 func inspectionExistsError(roomName string, month time.Time) *response.AppError {
 	return response.Err(
 		"INSPECTION_EXISTS",
@@ -601,8 +603,7 @@ func inspectionExistsError(roomName string, month time.Time) *response.AppError 
 	)
 }
 
-// isInspectionRoomMonthConflict detects the unique violation from either the
-// original constraint or the active-row partial index.
+// Checks the duplicate inspection constraint.
 func isInspectionRoomMonthConflict(err error) bool {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
@@ -849,7 +850,7 @@ func (s *Service) ReplaceChecklistForDate(actor *model.User, inspectionID int64,
 		)
 	}
 
-	// Only the assigned inspector or an admin may change answers.
+	// Assigned inspector or Admin only.
 	if !auth.IsKepala(actor.Role) && !auth.IsAdmin(actor.Role) && ins.InspectorID != actor.ID {
 		return response.Err(
 			"FORBIDDEN",
@@ -857,7 +858,7 @@ func (s *Service) ReplaceChecklistForDate(actor *model.User, inspectionID int64,
 			http.StatusForbidden,
 		)
 	}
-	// Ensure the inspection has a valid month.
+	// Check the inspection month.
 	if ins.InspectionMonth.IsZero() {
 		return response.Err(
 			"VALIDATION_ERROR",
@@ -865,7 +866,7 @@ func (s *Service) ReplaceChecklistForDate(actor *model.User, inspectionID int64,
 			http.StatusUnprocessableEntity,
 		)
 	}
-	// Can edit when status were open
+	// Only OPEN inspections can be edited.
 	if strings.ToUpper(strings.TrimSpace(ins.Status)) != "OPEN" {
 		return response.Err(
 			"INSPECTION_LOCKED",
@@ -873,7 +874,7 @@ func (s *Service) ReplaceChecklistForDate(actor *model.User, inspectionID int64,
 			http.StatusConflict,
 		)
 	}
-	// Normalize the selected date.
+	// Normalize the date.
 	answerDate = time.Date(
 		answerDate.Year(),
 		answerDate.Month(),
@@ -881,7 +882,7 @@ func (s *Service) ReplaceChecklistForDate(actor *model.User, inspectionID int64,
 		0, 0, 0, 0,
 		time.UTC,
 	)
-	// Allow editing only within the inspection's month.
+	// Date must be in the inspection month.
 	monthStart := time.Date(
 		ins.InspectionMonth.Year(),
 		ins.InspectionMonth.Month(),
@@ -898,7 +899,7 @@ func (s *Service) ReplaceChecklistForDate(actor *model.User, inspectionID int64,
 			http.StatusUnprocessableEntity,
 		)
 	}
-	// Prevent duplicate checklist item IDs.
+	// Reject duplicate items.
 	roomType := ""
 	if ins.Room != nil {
 		roomType = ins.Room.RoomType
@@ -935,7 +936,7 @@ func (s *Service) ReplaceChecklistForDate(actor *model.User, inspectionID int64,
 		}
 		seen[item.ChecklistItemID] = struct{}{}
 	}
-	// Replace answers only for the selected date.
+	// Replace answers for this date.
 	return s.Repo.ReplaceChecklistForDate(
 		inspectionID,
 		answerDate,
@@ -968,7 +969,7 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 		)
 	}
 
-	// Parse a calendar date, not an arbitrary timestamp.
+	// Parse the date.
 	answerDate, err := time.Parse("2006-01-02", strings.TrimSpace(in.AnswerDate))
 	if err != nil {
 		return response.Err(
@@ -1006,7 +1007,7 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 		)
 	}
 
-	// Only allow a date within this monthly inspection.
+	// Date must be in the inspection month.
 	if answerDate.Year() != inspection.InspectionMonth.Year() ||
 		answerDate.Month() != inspection.InspectionMonth.Month() {
 		return response.Err(
@@ -1086,8 +1087,7 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 			Notes:           "",
 		})
 	}
-	// This repository method replaces answers for this date only.
-	// It must not update inspections.notes.
+	// Replace answers for this date only.
 	return s.Repo.ReplaceChecklistForDate(
 		inspectionID,
 		answerDate,
@@ -1095,8 +1095,7 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 	)
 }
 
-// SaveInspectionDates replaces the checklist answers for several dates in one
-// request. All dates are validated before anything is written.
+// Saves answers for several dates.
 func (s *Service) SaveInspectionDates(actor *model.User, inspectionID int64, in SaveInspectionBulkInput) error {
 	if actor == nil {
 		return response.Err(
@@ -1258,7 +1257,7 @@ func (s *Service) UpdateInspectionNotes(actor *model.User, inspectionID int64, n
 		return err
 	}
 
-	// Update only the general monthly catatan.
+	// Update monthly notes.
 	return s.Repo.UpdateInspectionNotes(
 		inspectionID,
 		strings.TrimSpace(notes),
@@ -1309,10 +1308,10 @@ func (s *Service) SubmitInspections(actor *model.User, id int64) (*model.Inspect
 			http.StatusConflict,
 		)
 	}
-	// Get the previously saved Anggota signature.
+	// Get the Anggota signature.
 	sign := findSignatureByRole(ins.Signatures, "ANGGOTA")
 
-	// Check whether a signature exists.
+	// Anggota must have signed.
 	if sign == nil {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
@@ -1321,16 +1320,7 @@ func (s *Service) SubmitInspections(actor *model.User, id int64) (*model.Inspect
 		)
 	}
 
-	// Ensure the signature belongs to the assigned inspector.
-	if sign.SignerUserID == nil || *sign.SignerUserID != actor.ID {
-		return nil, response.Err(
-			"VALIDATION_ERROR",
-			"Tanda tangan tidak sesuai dengan petugas pemeriksa",
-			http.StatusUnprocessableEntity,
-		)
-	}
-
-	// Validate the previously saved signature image.
+	// Validate the signature image.
 	if !validSignatureImage(sign.ImageDataURL) {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
@@ -1339,11 +1329,11 @@ func (s *Service) SubmitInspections(actor *model.User, id int64) (*model.Inspect
 		)
 	}
 
-	// Update inspection status through repository.
+	// Set status to SUBMITTED.
 	if err := s.Repo.SubmitInspection(actor, sign); err != nil {
 		return nil, err
 	}
 
-	// Return updated inspection.
+	// Return the updated inspection.
 	return s.Repo.GetInspection(id)
 }

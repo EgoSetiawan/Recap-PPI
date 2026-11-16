@@ -115,8 +115,7 @@ async function main() {
         </div>
       `;
 
-      // Toast only for actual API/request errors,
-      // not when the returned list is empty.
+      // Show API errors only.
       toast(error.message || "Gagal memuat pemeriksaan.", "error");
     }
   }

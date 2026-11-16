@@ -691,7 +691,7 @@ func (r *Repo) CreateChecklistItem(c *model.ChecklistItem) error {
 	).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt)
 }
 
-// ChangeAssignPersonRoom replaces all room assignments for a user.
+// Replaces a user's room assignments.
 func (r *Repo) ChangeAssignPersonRoom(user *model.User) error {
 	if user == nil {
 		return fmt.Errorf("user is required")

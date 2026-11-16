@@ -113,8 +113,7 @@ async function main() {
     `;
   }
 
-  // Only hide or show the add button.
-  // Do not block the entire checklist page.
+  // Update the add button.
   if (addButton) {
     if (canManageChecklist) {
       addButton.classList.remove("hidden");

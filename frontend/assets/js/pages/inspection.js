@@ -270,11 +270,10 @@ function renderPage() {
     </div>
   `;
 
-  // Remove an old modal if this page is rendered again.
+  // Remove the old modal.
   document.getElementById("signature-modal")?.remove();
 
-  // Keep the modal directly under body so the overlay is
-  // independent of the page layout.
+  // Keep the modal under body.
   document.body.insertAdjacentHTML(
     "beforeend",
     `
@@ -945,8 +944,7 @@ function setupCreateInspection() {
     } catch (error) {
       console.error("Create inspection error:", error);
 
-      // A concurrent request may have created the inspection after the
-      // initial check. Resolve it and redirect to that record.
+      // Handle a concurrent create.
       if (selectedRoom && monthKey) {
         try {
           const existingInspection = await findExistingInspection(

@@ -31,8 +31,7 @@ func (s *Service) ListAuditLogs(actor *model.User, limit int) ([]model.AuditLog,
 	return s.Repo.ListAuditLogs(limit)
 }
 
-// recordAudit writes an audit entry. Audit failures are logged but must not
-// make the successful business action look like it failed.
+// Writes an audit entry.
 func (s *Service) recordAudit(
 	actor *model.User,
 	action, entityType string,

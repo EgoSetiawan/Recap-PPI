@@ -7,6 +7,7 @@ import {
   formatDate,
   formatMonth,
   isAdminRole,
+  isAnggotaRole,
   isKepalaRole,
   normalizeRole,
   qs,
@@ -233,7 +234,7 @@ function mountSignatureModal({
 
       closeModal();
 
-      // Reload to refresh signature information and buttons.
+      // Reload the page.
       window.location.reload();
     } catch (error) {
       toast(error.message || errorMessage, "error");
@@ -287,7 +288,7 @@ async function setupDailyChecklist(inspection, options = {}) {
       .trim()
       .toUpperCase() === "OPEN";
 
-  // Only the assigned petugas (or an admin) may edit an OPEN draft.
+  // Only the assigned inspector or Admin can edit an OPEN draft.
   const isEditable = isOpen && options.canEdit === true;
 
   if (!dateInput || !dateList || !checklistContainer || !progress) {
@@ -439,7 +440,7 @@ async function setupDailyChecklist(inspection, options = {}) {
     });
   }
 
-  // Save the visible day's current form values to the draft Map.
+  // Save the visible day to drafts.
   function markVisibleDateDirty() {
     if (!isEditable || !dateInput.value) return;
 
@@ -823,7 +824,7 @@ async function setupDailyChecklist(inspection, options = {}) {
       return false;
     }
 
-    // Validate all drafts before calling the backend.
+    // Validate drafts before saving.
     for (const day of days) {
       if (!day.answer_date.startsWith(`${monthKey}-`)) {
         toast(`Tanggal ${day.answer_date} berada di luar bulan pemeriksaan.`, "error");
@@ -982,7 +983,7 @@ async function main() {
 
   const isRejectedInspection = inspectionStatus === "REJECTED";
 
-  // Approved records are archived and cannot be deleted.
+  // Approved inspections cannot be deleted.
   const canDeleteInspection = canManageInspection && !isApprovedInspection;
 
   // Highlight the nav entry that matches the current inspection state.
@@ -1000,8 +1001,7 @@ async function main() {
     }
   });
 
-  // Signature records can come from `signatures` (API) or the legacy
-  // single-signature fields used by older builds.
+  // Read signatures from the API or legacy fields.
   const signatures = Array.isArray(insp.signatures) ? insp.signatures : [];
 
   const anggotaSignature =
@@ -1016,22 +1016,20 @@ async function main() {
 
   const isAssignedInspector = Number(user.id) > 0 && Number(insp.inspector_id) === Number(user.id);
 
-  // Petugas: the assigned inspector signs the petugas slot. Kepala can also
-  // fill this slot when they create or edit the inspection. Drafts can be
-  // signed/re-signed; a SUBMITTED record without a petugas signature can
-  // still be completed (older data), final records are locked.
+  // Anggota signs the petugas slot.
   const canSignAsAnggota =
-    (isOpenInspection || isSubmittedInspection) && isAssignedInspector && !hasAnggotaSignature;
+    (isOpenInspection || isSubmittedInspection) &&
+    isAnggotaRole(currentRole) &&
+    !hasAnggotaSignature;
 
-  // Anggota: the signed draft can be sent to the kepala for review.
-  // Only the assigned inspector can submit (the API enforces the same).
+  // Only the assigned inspector can submit.
   const canSubmitForReview = isOpenInspection && isAssignedInspector && hasAnggotaSignature;
 
-  // Kepala: signs the review stage only, and only once.
+  // Kepala signs once after submit.
   const canSignAsKepalaRuangan =
     isKepala && isSubmittedInspection && hasAnggotaSignature && !hasKepalaSignature;
 
-  // Kepala (or admin oversight): final approval after both signatures.
+  // Kepala or Admin approves after both signatures.
   const canApproveInspection =
     (isKepala || isAdmin) && isSubmittedInspection && hasAnggotaSignature && hasKepalaSignature;
 
