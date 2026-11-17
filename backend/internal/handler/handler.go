@@ -265,6 +265,22 @@ func (h *Handler) ListUsers(c *gin.Context) {
 	response.OK(c, users, "Users retrieved")
 }
 
+func (h *Handler) CreateUser(c *gin.Context) {
+	var in service.UserInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.FailCode(c, "INVALID_JSON", "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.Svc.CreateUsers(middleware.CurrentUser(c), in, c.ClientIP())
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.Created(c, user, "Pengguna berhasil dibuat")
+}
+
 func (h *Handler) ListAuditLogs(c *gin.Context) {
 	limit := 100
 	if raw := c.Query("limit"); raw != "" {

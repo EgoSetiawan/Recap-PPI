@@ -46,69 +46,134 @@ async function main() {
 
   // Form for creating a checklist item.
   function formFields(item = {}) {
+    const selectedType = item.room_type || "ALL";
+
     return `
-      <div class="${formGroup}">
-        <label for="checklist-name">Nama Checklist</label>
-        <input
-          id="checklist-name"
-          name="name"
-          required
-          value="${escapeHtml(item.name || "")}"
-        />
-      </div>
+      <div class="create-form">
+        <div class="create-form__intro">
+          <div class="create-form__intro-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="3" width="14" height="18" rx="2" />
+              <path d="M9 3.5h6M9 9h6M9 13h6M9 17h3" />
+            </svg>
+          </div>
 
-      <div class="${formGroup}">
-        <label for="checklist-description">Deskripsi</label>
-        <textarea
-          id="checklist-description"
-          name="description"
-          rows="3"
-        >${escapeHtml(item.description || "")}</textarea>
-      </div>
+          <div>
+            <p class="create-form__eyebrow">Item baru</p>
+            <h4>Tambah item checklist</h4>
+            <p>Buat butir pemeriksaan yang akan muncul pada form inspeksi ruangan.</p>
+          </div>
+        </div>
 
-      <div class="${formGroup}">
-        <label for="checklist-room-type">Tipe Ruangan</label>
-        <select
-          id="checklist-room-type"
-          name="room_type"
-          required
-        >
-          ${Object.entries(roomTypes)
-            .map(
-              ([value, label]) => `
-                <option
-                  value="${value}"
-                  ${(item.room_type || "ALL") === value ? "selected" : ""}
-                >
-                  ${label}
-                </option>
-              `,
-            )
-            .join("")}
-        </select>
-      </div>
+        <div class="create-form__layout">
+          <div class="create-form__main">
+            <section class="cu-panel">
+              <div class="cu-panel__head">
+                <span class="cu-step">01</span>
+                <div>
+                  <h5>Informasi item</h5>
+                  <p>Tulis butir pemeriksaan secara jelas dan singkat.</p>
+                </div>
+              </div>
 
-      <div class="${formGroup}">
-        <label for="checklist-order">Urutan</label>
-        <input
-          id="checklist-order"
-          name="order_number"
-          type="number"
-          min="1"
-          value="${item.order_number ?? 99}"
-          required
-        />
-      </div>
+              <div class="${formGroup}">
+                <label for="checklist-name">Nama checklist <span class="cu-required">*</span></label>
+                <input
+                  id="checklist-name"
+                  name="name"
+                  required
+                  autocomplete="off"
+                  placeholder="cth. Mengisi bundle HAIS setiap pasien"
+                  value="${escapeHtml(item.name || "")}"
+                />
+              </div>
 
-      <div class="${formGroup}">
-        <label>
-          <input
-            type="checkbox"
-            name="is_required"
-            ${item.is_required !== false ? "checked" : ""}
-          />
-          Wajib diisi
-        </label>
+              <div class="${formGroup}">
+                <label for="checklist-description">Deskripsi</label>
+                <textarea
+                  id="checklist-description"
+                  name="description"
+                  rows="3"
+                  placeholder="Keterangan tambahan untuk petugas..."
+                >${escapeHtml(item.description || "")}</textarea>
+              </div>
+            </section>
+
+            <section class="cu-panel">
+              <div class="cu-panel__head">
+                <span class="cu-step">02</span>
+                <div>
+                  <h5>Pengaturan tampilan</h5>
+                  <p>Tentukan ruangan dan urutan item ini.</p>
+                </div>
+              </div>
+
+              <div class="cu-grid-2">
+                <div class="${formGroup}">
+                  <label for="checklist-room-type">Tipe ruangan <span class="cu-required">*</span></label>
+                  <select id="checklist-room-type" name="room_type" required>
+                    ${Object.entries(roomTypes)
+                      .map(
+                        ([value, label]) => `
+                          <option value="${value}" ${selectedType === value ? "selected" : ""}>
+                            ${label}
+                          </option>
+                        `,
+                      )
+                      .join("")}
+                  </select>
+                </div>
+
+                <div class="${formGroup}">
+                  <label for="checklist-order">Urutan</label>
+                  <input
+                    id="checklist-order"
+                    name="order_number"
+                    type="number"
+                    min="1"
+                    class="cu-order-input"
+                    value="${item.order_number ?? 99}"
+                    required
+                  />
+                  <p class="cu-help">Angka lebih kecil tampil lebih awal.</p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="create-form__aside">
+            <section class="cu-panel cu-panel--soft">
+              <div class="cu-panel__head">
+                <span class="cu-step">03</span>
+                <div>
+                  <h5>Aturan penilaian</h5>
+                  <p>Tentukan apakah item ini wajib dinilai.</p>
+                </div>
+              </div>
+
+              <label class="cu-switch">
+                <input
+                  type="checkbox"
+                  name="is_required"
+                  ${item.is_required !== false ? "checked" : ""}
+                />
+                <span class="cu-switch__track" aria-hidden="true"></span>
+                <span class="cu-switch__copy">
+                  <strong>Wajib diisi</strong>
+                  <small>Petugas harus menilai item ini sebelum menyimpan pemeriksaan.</small>
+                </span>
+              </label>
+
+              <div class="cu-info" style="margin-top: 14px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v5M12 8h.01" />
+                </svg>
+                <span>Item akan muncul pada pemeriksaan baru sesuai tipe ruangan yang dipilih.</span>
+              </div>
+            </section>
+          </aside>
+        </div>
       </div>
     `;
   }
@@ -119,39 +184,37 @@ async function main() {
       addButton.classList.remove("hidden");
 
       addButton.addEventListener("click", () => {
-        openModal({
+        const modal = openModal({
           title: "Tambah Item Checklist",
-          submitLabel: "Simpan",
+          submitLabel: "Buat Item",
           bodyHtml: formFields(),
 
-          onSubmit: async (form, el) => {
-            try {
-              const name = String(form.name || "").trim();
+          onSubmit: async (data, form) => {
+            const name = String(data.name || "").trim();
 
-              if (!name) {
-                toast("Nama checklist wajib diisi.", "error");
-                return;
-              }
-
-              await api("/checklist-items", {
-                method: "POST",
-                body: {
-                  name,
-                  room_type: form.room_type || "ALL",
-                  description: String(form.description || "").trim(),
-                  order_number: Number(form.order_number),
-                  is_required: el.querySelector('[name="is_required"]').checked,
-                },
-              });
-
-              toast("Item checklist berhasil ditambahkan", "success");
-
-              await load();
-            } catch (error) {
-              toast(error.message, "error");
+            if (!name) {
+              throw new Error("Nama checklist wajib diisi.");
             }
+
+            await api("/checklist-items", {
+              method: "POST",
+              body: {
+                name,
+                room_type: String(data.room_type || "ALL"),
+                description: String(data.description || "").trim(),
+                order_number: Number(data.order_number) || 99,
+                is_required: Boolean(form.querySelector('[name="is_required"]')?.checked),
+              },
+            });
+
+            toast("Item checklist berhasil ditambahkan", "success");
+            await load();
           },
         });
+
+        modal
+          .querySelector(".modal")
+          ?.classList.add("create-form-modal", "create-form-modal--compact");
       });
     } else {
       addButton.classList.add("hidden");

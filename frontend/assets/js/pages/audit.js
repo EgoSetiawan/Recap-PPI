@@ -4,6 +4,7 @@ import { escapeHtml, formatDate } from "../utils/format.js";
 import { tableWrap, empty } from "../ui.js";
 
 const ACTION_LABELS = {
+  CREATE_USER: "Tambah pengguna",
   UPDATE_USER_ROOMS: "Ubah penugasan ruangan",
   DELETE_INSPECTION: "Hapus pemeriksaan",
 };
@@ -13,6 +14,12 @@ function listLabel(names) {
 }
 
 function detailFor(item) {
+  if (item.action === "CREATE_USER") {
+    const value = item.new_value || {};
+
+    return [value.name, value.email, value.role].filter(Boolean).join(" · ");
+  }
+
   if (item.action === "UPDATE_USER_ROOMS") {
     const target =
       item.entity_name || (item.entity_id ? `Pengguna #${item.entity_id}` : "Pengguna");

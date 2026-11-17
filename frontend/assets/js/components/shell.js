@@ -508,7 +508,7 @@ export async function mountShell(activePage, options = {}) {
 
         <div class="brand">
           <span class="brand-mark-icon">
-            ${icon("brand")}
+            <img src="../assets/img/logo.webp" alt="" />
           </span>
 
           <div class="brand-copy">

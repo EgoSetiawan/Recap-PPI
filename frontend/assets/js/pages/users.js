@@ -200,6 +200,438 @@ function openRoomAssignment(user) {
   });
 }
 
+function openCreateUser() {
+  const eyeIcon = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  `;
+
+  const eyeOffIcon = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="m3 3 18 18" />
+      <path d="M10.6 5.2A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.8 17.8 0 0 1-3.2 4.2" />
+      <path d="M6.6 6.6C3.6 8.5 2 12 2 12s3.5 7 10 7a10.8 10.8 0 0 0 4.3-.9" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </svg>
+  `;
+
+  const roleOptions = [
+    {
+      value: "ANGGOTA",
+      label: "Anggota PPI",
+      description: "Mengisi pemeriksaan ruangan.",
+      icon: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="3.2" />
+          <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+        </svg>
+      `,
+    },
+    {
+      value: "KEPALA",
+      label: "Kepala PPI",
+      description: "Meninjau dan menandatangani.",
+      icon: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3 4.5 6v5.5c0 4.4 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5.1 7.5-9.5V6L12 3Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      `,
+    },
+    {
+      value: "SUPER_ADMIN",
+      label: "Super Admin",
+      description: "Mengelola pengguna dan sistem.",
+      icon: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
+        </svg>
+      `,
+    },
+  ];
+
+  const roleCards = roleOptions
+    .map(
+      (role, index) => `
+        <label class="cu-role">
+          <input
+            type="radio"
+            name="role"
+            value="${role.value}"
+            ${index === 0 ? "checked" : ""}
+          />
+
+          <span class="cu-role__top">
+            <span class="cu-role__icon">${role.icon}</span>
+            <span class="cu-role__dot" aria-hidden="true"></span>
+          </span>
+
+          <strong>${role.label}</strong>
+          <small>${role.description}</small>
+        </label>
+      `,
+    )
+    .join("");
+
+  const roomItems = rooms.length
+    ? rooms
+        .map((room) => {
+          const name = room.name || `Ruangan #${room.id}`;
+          const code = room.code || "";
+          const search = `${name} ${code}`.toLowerCase();
+
+          return `
+            <label class="cu-room" data-room-search="${escapeHtml(search)}">
+              <input type="checkbox" name="room_ids" value="${escapeHtml(String(room.id))}" />
+              <span>${escapeHtml(name)}</span>
+              ${code ? `<code>${escapeHtml(code)}</code>` : ""}
+            </label>
+          `;
+        })
+        .join("")
+    : '<div class="cu-empty">Belum ada ruangan. Tambahkan ruangan terlebih dahulu.</div>';
+
+  const modal = openModal({
+    title: "Tambah Pengguna",
+    submitLabel: "Buat Pengguna",
+
+    bodyHtml: `
+      <div class="create-form">
+        <div class="create-form__intro">
+          <div class="create-form__intro-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="8.5" cy="7" r="4" />
+              <path d="M19 8v6M22 11h-6" />
+            </svg>
+          </div>
+
+          <div>
+            <p class="create-form__eyebrow">Akses baru</p>
+            <h4>Buat akun pengguna</h4>
+            <p>Tambahkan pengguna, tentukan perannya, lalu pilih ruangan yang menjadi tanggung jawabnya.</p>
+          </div>
+        </div>
+
+        <div class="create-form__layout">
+          <div class="create-form__main">
+            <section class="cu-panel">
+              <div class="cu-panel__head">
+                <span class="cu-step">01</span>
+                <div>
+                  <h5>Identitas pengguna</h5>
+                  <p>Data ini akan tampil pada daftar pengguna dan laporan.</p>
+                </div>
+              </div>
+
+              <div class="cu-grid-2">
+                <div class="${formGroup}">
+                  <label for="user-name">Nama lengkap <span class="cu-required">*</span></label>
+                  <input
+                    id="user-name"
+                    name="name"
+                    required
+                    autocomplete="name"
+                    placeholder="cth. Andi Setiawan"
+                  />
+                </div>
+
+                <div class="${formGroup}">
+                  <label for="user-email">Email <span class="cu-required">*</span></label>
+                  <input
+                    id="user-email"
+                    name="email"
+                    type="email"
+                    required
+                    autocomplete="email"
+                    placeholder="nama@ppi.local"
+                  />
+                  <p class="cu-help">Digunakan untuk masuk ke aplikasi.</p>
+                </div>
+
+                <div class="${formGroup} cu-field-full">
+                  <label for="user-title">Jabatan</label>
+                  <input
+                    id="user-title"
+                    name="title"
+                    autocomplete="organization-title"
+                    placeholder="cth. Kepala PPI atau Anggota PPI"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section class="cu-panel">
+              <div class="cu-panel__head">
+                <span class="cu-step">02</span>
+                <div>
+                  <h5>Peran dan akses</h5>
+                  <p>Peran menentukan fitur yang dapat digunakan.</p>
+                </div>
+              </div>
+
+              <div class="cu-roles" role="radiogroup" aria-label="Peran pengguna">
+                ${roleCards}
+              </div>
+            </section>
+
+            <section class="cu-panel" id="user-rooms-group">
+              <div class="cu-panel__head">
+                <span class="cu-step">03</span>
+                <div>
+                  <h5>Akses ruangan</h5>
+                  <p>Pilih ruangan yang dapat diperiksa oleh Anggota.</p>
+                </div>
+              </div>
+
+              <div class="cu-room-toolbar">
+                <div class="cu-room-search">
+                  <input
+                    type="search"
+                    id="user-room-search"
+                    placeholder="Cari nama atau kode ruangan..."
+                    aria-label="Cari ruangan"
+                  />
+                </div>
+
+                <button type="button" class="cu-room-button" data-room-action="all">Pilih semua</button>
+                <button type="button" class="cu-room-button" data-room-action="none">Kosongkan</button>
+                <span class="cu-room-count" id="user-room-count">Belum ada ruangan dipilih</span>
+              </div>
+
+              <div class="cu-rooms" id="user-rooms">
+                ${roomItems}
+              </div>
+
+              <div class="cu-room-note">
+                Peran ini otomatis memiliki akses ke semua ruangan.
+              </div>
+            </section>
+          </div>
+
+          <aside class="create-form__aside">
+            <section class="cu-panel">
+              <div class="cu-panel__head">
+                <span class="cu-step">04</span>
+                <div>
+                  <h5>Keamanan akun</h5>
+                  <p>Buat password awal untuk pengguna.</p>
+                </div>
+              </div>
+
+              <div class="${formGroup}">
+                <label for="user-password">Password <span class="cu-required">*</span></label>
+                <div class="cu-password">
+                  <input
+                    id="user-password"
+                    name="password"
+                    type="password"
+                    minlength="6"
+                    required
+                    autocomplete="new-password"
+                    placeholder="Minimal 6 karakter"
+                  />
+                  <button
+                    type="button"
+                    class="cu-password__toggle"
+                    data-password-toggle="user-password"
+                    aria-label="Tampilkan password"
+                  >
+                    ${eyeIcon}
+                  </button>
+                </div>
+              </div>
+
+              <div class="${formGroup}">
+                <label for="user-password-confirm">Konfirmasi password <span class="cu-required">*</span></label>
+                <div class="cu-password">
+                  <input
+                    id="user-password-confirm"
+                    name="password_confirm"
+                    type="password"
+                    minlength="6"
+                    required
+                    autocomplete="new-password"
+                    placeholder="Ulangi password"
+                  />
+                  <button
+                    type="button"
+                    class="cu-password__toggle"
+                    data-password-toggle="user-password-confirm"
+                    aria-label="Tampilkan konfirmasi password"
+                  >
+                    ${eyeIcon}
+                  </button>
+                </div>
+                <p class="cu-help">Gunakan minimal 6 karakter.</p>
+              </div>
+            </section>
+
+            <section class="cu-panel cu-panel--soft">
+              <div class="cu-panel__head">
+                <span class="cu-step">05</span>
+                <div>
+                  <h5>Status akun</h5>
+                  <p>Tentukan apakah akun langsung dapat digunakan.</p>
+                </div>
+              </div>
+
+              <div class="cu-status">
+                <label for="user-status">Status</label>
+                <select id="user-status" name="status">
+                  <option value="ACTIVE" selected>Aktif — dapat langsung masuk</option>
+                  <option value="INACTIVE">Nonaktif — akses ditangguhkan</option>
+                </select>
+              </div>
+
+              <div class="cu-info" style="margin-top: 12px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v5M12 8h.01" />
+                </svg>
+                <span>Pengguna dapat mengganti password setelah masuk pertama kali.</span>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    `,
+
+    onSubmit: async (data, form) => {
+      const name = String(data.name || "").trim();
+      const email = String(data.email || "").trim();
+      const title = String(data.title || "").trim();
+      const password = String(data.password || "");
+      const passwordConfirm = String(data.password_confirm || "");
+      const role = String(data.role || "ANGGOTA");
+      const status = String(data.status || "ACTIVE");
+
+      if (!name || !email) {
+        throw new Error("Nama dan email wajib diisi.");
+      }
+
+      if (password.length < 6) {
+        throw new Error("Password minimal 6 karakter.");
+      }
+
+      if (password !== passwordConfirm) {
+        throw new Error("Konfirmasi password tidak sama.");
+      }
+
+      const roomIDs =
+        role === "ANGGOTA"
+          ? [...form.querySelectorAll('input[name="room_ids"]:checked')].map((input) =>
+              Number(input.value),
+            )
+          : [];
+
+      await api("/users", {
+        method: "POST",
+        body: {
+          name,
+          email,
+          title,
+          password,
+          role,
+          status,
+          assigned_room_ids: roomIDs,
+        },
+      });
+
+      toast("Pengguna berhasil dibuat", "success");
+      await load();
+    },
+  });
+
+  modal.querySelector(".modal")?.classList.add("create-form-modal");
+
+  const form = modal.querySelector(".modal-form");
+
+  if (!form) return;
+
+  const roleInputs = [...form.querySelectorAll('input[name="role"]')];
+  const roomSection = form.querySelector("#user-rooms-group");
+  const roomToolbar = roomSection?.querySelector(".cu-room-toolbar");
+  const roomList = roomSection?.querySelector(".cu-rooms");
+  const roomNote = roomSection?.querySelector(".cu-room-note");
+  const roomChecks = [...form.querySelectorAll('input[name="room_ids"]')];
+  const roomCount = form.querySelector("#user-room-count");
+  const roomSearch = form.querySelector("#user-room-search");
+
+  const checkedRooms = () => roomChecks.filter((input) => input.checked && !input.disabled).length;
+
+  const updateRoomCount = () => {
+    if (!roomCount) return;
+
+    const count = checkedRooms();
+    roomCount.textContent = count ? `${count} ruangan dipilih` : "Belum ada ruangan dipilih";
+  };
+
+  const updateRoomState = () => {
+    const role = form.querySelector('input[name="role"]:checked')?.value;
+    const isAnggota = role === "ANGGOTA";
+
+    if (roomToolbar) roomToolbar.style.display = isAnggota ? "" : "none";
+    if (roomList) roomList.style.display = isAnggota ? "" : "none";
+    roomNote?.classList.toggle("is-visible", !isAnggota);
+
+    roomChecks.forEach((input) => {
+      input.disabled = !isAnggota;
+    });
+
+    updateRoomCount();
+  };
+
+  roleInputs.forEach((input) => {
+    input.addEventListener("change", updateRoomState);
+  });
+
+  roomChecks.forEach((input) => {
+    input.addEventListener("change", updateRoomCount);
+  });
+
+  roomSearch?.addEventListener("input", () => {
+    const query = roomSearch.value.trim().toLowerCase();
+
+    form.querySelectorAll(".cu-room").forEach((room) => {
+      room.classList.toggle(
+        "is-hidden",
+        Boolean(query) && !room.dataset.roomSearch.includes(query),
+      );
+    });
+  });
+
+  form.querySelectorAll("[data-room-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const shouldCheck = button.dataset.roomAction === "all";
+
+      form.querySelectorAll(".cu-room:not(.is-hidden) input[name='room_ids']").forEach((input) => {
+        if (!input.disabled) input.checked = shouldCheck;
+      });
+
+      updateRoomCount();
+    });
+  });
+
+  form.querySelectorAll("[data-password-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const input = form.querySelector(`#${button.dataset.passwordToggle}`);
+
+      if (!input) return;
+
+      const show = input.type === "password";
+      input.type = show ? "text" : "password";
+      button.innerHTML = show ? eyeOffIcon : eyeIcon;
+      button.setAttribute("aria-label", show ? "Sembunyikan password" : "Tampilkan password");
+    });
+  });
+
+  updateRoomState();
+}
+
 async function load() {
   const [usersResponse, roomsResponse] = await Promise.all([api("/users"), api("/rooms")]);
 
@@ -222,6 +654,13 @@ async function main() {
       </div>
     `;
     return;
+  }
+
+  const addUserButton = document.getElementById("add-user");
+
+  if (addUserButton && hasPermission("users.manage")) {
+    addUserButton.classList.remove("hidden");
+    addUserButton.addEventListener("click", openCreateUser);
   }
 
   document.getElementById("users-table").addEventListener("click", (event) => {

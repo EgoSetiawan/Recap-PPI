@@ -241,12 +241,20 @@
   width: 38px;
   height: 38px;
   flex-shrink: 0;
+  overflow: hidden;
   border-radius: 12px;
   background: linear-gradient(150deg, #5b78ff 0%, #3b5bfd 46%, #1fb6d4 130%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
     0 8px 20px -8px rgba(59, 91, 253, 0.9);
   color: #fff;
+}
+
+.brand-mark-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .brand-mark-icon svg {

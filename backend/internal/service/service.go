@@ -30,6 +30,17 @@ type Service struct {
 	MaxUploadBytes    int64
 }
 
+type UserInput struct {
+	Name            string  `json:"name"`
+	Email           string  `json:"email"`
+	Title           string  `json:"title"`
+	Password        string  `json:"password"`
+	Role            string  `json:"role"`
+	Status          string  `json:"status"`
+	RoleID          int64   `json:"role_id"`
+	AssignedRoomIDs []int64 `json:"assigned_room_ids"`
+}
+
 func New(repo *repository.Repo, jwtSecret string, ttl time.Duration, appEnv, seedPath string) *Service {
 	// uploadDir
 	return &Service{
@@ -501,4 +512,113 @@ func (s *Service) CreateChecklist(actor *model.User, c *model.ChecklistItem) (*m
 		return nil, err
 	}
 	return c, nil
+}
+
+func (s *Service) CreateUsers(actor *model.User, in UserInput, ipAddress string) (*model.User, error) {
+	if actor == nil {
+		return nil, response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
+	if !auth.IsAdmin(actor.Role) {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya admin yang dapat membuat pengguna baru",
+			http.StatusForbidden,
+		)
+	}
+
+	if strings.TrimSpace(in.Name) == "" ||
+		strings.TrimSpace(in.Email) == "" ||
+		strings.TrimSpace(in.Password) == "" {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Nama, email, dan password wajib diisi",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	roleID := in.RoleID
+	if roleID <= 0 && strings.TrimSpace(in.Role) != "" {
+		roleName := strings.ToUpper(strings.TrimSpace(in.Role))
+		switch roleName {
+		case "ATASAN_PPI", "KEPALA_PPI":
+			roleName = "KEPALA"
+		case "ANGGOTA_PPI":
+			roleName = "ANGGOTA"
+		}
+
+		role, err := s.Repo.GetRoleByName(roleName)
+		if err != nil {
+			return nil, err
+		}
+		if role == nil {
+			return nil, response.Err("VALIDATION_ERROR", "Role tidak valid", http.StatusUnprocessableEntity)
+		}
+		roleID = role.ID
+	}
+
+	role, err := s.Repo.GetRole(roleID)
+	if err != nil {
+		return nil, err
+	}
+	if role == nil {
+		return nil, response.Err("VALIDATION_ERROR", "Role tidak valid", http.StatusUnprocessableEntity)
+	}
+
+	existing, err := s.Repo.GetByEmail(strings.TrimSpace(in.Email))
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, response.Err(
+			"EMAIL_EXISTS",
+			"Email sudah digunakan",
+			http.StatusConflict,
+		)
+	}
+
+	pass := in.Password
+	hash, err := auth.HashPassword(pass)
+	if err != nil {
+		return nil, err
+	}
+	status := in.Status
+	if status == "" {
+		status = "ACTIVE"
+	}
+	u := &model.User{
+		Name:            strings.TrimSpace(in.Name),
+		Email:           strings.TrimSpace(in.Email),
+		Title:           strings.TrimSpace(in.Title),
+		RoleID:          role.ID,
+		Role:            role.Name,
+		Status:          status,
+		AssignedRoomIDs: in.AssignedRoomIDs,
+	}
+	if u.AssignedRoomIDs == nil {
+		u.AssignedRoomIDs = []int64{}
+	}
+	if err := s.Repo.CreateUser(u, hash); err != nil {
+		return nil, err
+	}
+
+	s.recordAudit(
+		actor,
+		"CREATE_USER",
+		"user",
+		u.ID,
+		nil,
+		map[string]interface{}{
+			"name":     u.Name,
+			"email":    u.Email,
+			"role":     u.Role,
+			"room_ids": u.AssignedRoomIDs,
+		},
+		ipAddress,
+	)
+
+	return publicUser(u), nil
 }

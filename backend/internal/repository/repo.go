@@ -83,6 +83,21 @@ func (r *Repo) GetRole(id int64) (*model.Role, error) {
 	return &role, nil
 }
 
+func (r *Repo) GetRoleByName(name string) (*model.Role, error) {
+	var role model.Role
+	err := r.DB.QueryRow(
+		`SELECT id, name, description FROM roles WHERE UPPER(name)=UPPER($1)`,
+		name,
+	).Scan(&role.ID, &role.Name, &role.Description)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &role, nil
+}
+
 func (r *Repo) loadAssignedRooms(userID int64) ([]int64, error) {
 	rows, err := r.DB.Query(`SELECT room_id FROM user_assigned_rooms WHERE user_id=$1 ORDER BY room_id`, userID)
 	if err != nil {
@@ -682,7 +697,6 @@ func (r *Repo) ListAuditLogs(limit int) ([]model.AuditLog, error) {
 	return logs, rows.Err()
 }
 
-
 func (r *Repo) CreateChecklistItem(c *model.ChecklistItem) error {
 	return r.DB.QueryRow(
 		`INSERT INTO checklist_items (room_type, name, description, is_required, order_number)
@@ -707,5 +721,25 @@ func (r *Repo) ChangeAssignPersonRoom(user *model.User) error {
 		return err
 	}
 
+	return tx.Commit()
+}
+
+func (r *Repo) CreateUser(user *model.User, passwordHash string) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	err = tx.QueryRow(
+		`INSERT INTO users (name, email, title, password_hash, role_id, status) VALUES ($1,$2,$3,$4,$5,$6)
+		 RETURNING id, created_at, updated_at`,
+		user.Name, user.Email, user.Title, passwordHash, user.RoleID, user.Status,
+	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	if err := r.setAssignedRooms(tx, user.ID, user.AssignedRoomIDs); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
