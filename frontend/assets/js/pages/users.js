@@ -2,6 +2,7 @@ import { requireAuth, api, hasPermission } from "../api.js";
 import { mountShell, toast, openModal } from "../components/shell.js";
 import { escapeHtml } from "../utils/format.js";
 import { badge, btnSecondary, btnSm, formGroup, tableWrap, empty } from "../ui.js";
+import { paginate, renderPagination } from "../components/pagination.js";
 
 const ROLE_LABELS = {
   SUPER_ADMIN: "Super Admin",
@@ -17,6 +18,8 @@ const ROLE_BADGES = {
 
 let users = [];
 let rooms = [];
+let page = 1;
+let pageSize = 10;
 
 function unwrapArray(response) {
   if (Array.isArray(response)) return response;
@@ -67,6 +70,9 @@ function assignedRooms(user) {
 
 function renderTable() {
   const table = document.getElementById("users-table");
+  const pagination = document.getElementById("users-pagination");
+  const result = paginate(users, page, pageSize);
+  page = result.page;
 
   table.innerHTML = `
     <div class="${tableWrap}">
@@ -83,7 +89,7 @@ function renderTable() {
 
         <tbody>
           ${
-            users
+            result.items
               .map((user) => {
                 const normalizedRole = normalizeRole(user.role);
                 const isAnggota = normalizedRole === "ANGGOTA";
@@ -143,6 +149,21 @@ function renderTable() {
       </table>
     </div>
   `;
+
+  renderPagination(pagination, {
+    page,
+    pageSize,
+    total: users.length,
+    onPageChange: (next) => {
+      page = next;
+      renderTable();
+    },
+    onPageSizeChange: (size) => {
+      pageSize = size;
+      page = 1;
+      renderTable();
+    },
+  });
 }
 
 function openRoomAssignment(user) {
@@ -542,6 +563,7 @@ function openCreateUser() {
       });
 
       toast("Pengguna berhasil dibuat", "success");
+      page = 1;
       await load();
     },
   });
