@@ -49,9 +49,13 @@ func main() {
 	var userCount int
 	_ = sqlDB.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&userCount)
 	if userCount == 0 {
-		log.Printf("Empty database — seeding from %s", seedPath)
-		if err := seed.Run(sqlDB, seedPath); err != nil {
-			log.Fatalf("seed: %v", err)
+		if _, err := os.Stat(seedPath); err != nil {
+			log.Printf("Empty database — seed file not found at %s, skipping seed", seedPath)
+		} else {
+			log.Printf("Empty database — seeding from %s", seedPath)
+			if err := seed.Run(sqlDB, seedPath); err != nil {
+				log.Fatalf("seed: %v", err)
+			}
 		}
 	}
 

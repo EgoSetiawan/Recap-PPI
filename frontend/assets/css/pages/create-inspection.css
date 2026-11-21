@@ -444,7 +444,6 @@
 
 #signature-modal #sig-root {
   width: 100%;
-  min-height: 260px;
   overflow: hidden;
 }
 

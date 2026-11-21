@@ -5,9 +5,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+	"image/color"
+	"image/draw"
 	_ "image/jpeg"
 	"image/png"
 	"log"
+	"math"
 	"strings"
 	"time"
 
@@ -402,11 +405,94 @@ func signatureDataURLToPNG(dataURL string) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
+	if err := png.Encode(&buf, trimSignatureMargins(img)); err != nil {
 		return nil, fmt.Errorf("encode signature image: %w", err)
 	}
 
 	return buf.Bytes(), nil
+}
+
+const (
+	// Channel values at or above this are treated as blank paper while
+	// looking for the signature ink.
+	signatureWhiteThreshold uint32 = 0xF000
+	// Blank space kept around the ink, relative to the ink size.
+	signatureTrimPadding = 0.06
+	// The report sizes a signature by the row height, so the printed width
+	// follows the aspect ratio. Padding keeps it inside a printable range.
+	signatureMinAspect = 1.2
+	signatureMaxAspect = 6.0
+	// Ink smaller than this is not worth cropping around (stray dot).
+	signatureMinInkPixels = 3
+)
+
+// Crops the blank paper around a signature.
+//
+// The report centres the image it receives, not the drawing inside it, so a
+// signature drawn on the left of a wide canvas used to print off-centre and
+// small. Trimming the empty margins makes the drawn stroke fill the image, and
+// the padded aspect ratio keeps the printed width inside the report cell.
+func trimSignatureMargins(src image.Image) image.Image {
+	bounds := src.Bounds()
+	minX, minY := bounds.Max.X, bounds.Max.Y
+	maxX, maxY := bounds.Min.X-1, bounds.Min.Y-1
+	found := false
+
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			r, g, bl, a := src.At(x, y).RGBA()
+			if a == 0 ||
+				(r >= signatureWhiteThreshold &&
+					g >= signatureWhiteThreshold &&
+					bl >= signatureWhiteThreshold) {
+				continue
+			}
+			found = true
+			if x < minX {
+				minX = x
+			}
+			if y < minY {
+				minY = y
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y > maxY {
+				maxY = y
+			}
+		}
+	}
+	if !found || maxX-minX < signatureMinInkPixels || maxY-minY < signatureMinInkPixels {
+		return src
+	}
+
+	padX := max(int(math.Round(float64(maxX-minX)*signatureTrimPadding)), 4)
+	padY := max(int(math.Round(float64(maxY-minY)*signatureTrimPadding)), 4)
+	crop := image.Rect(minX-padX, minY-padY, maxX+1+padX, maxY+1+padY)
+
+	width, height := crop.Dx(), crop.Dy()
+	switch aspect := float64(width) / float64(height); {
+	case aspect > signatureMaxAspect:
+		height = int(math.Round(float64(width) / signatureMaxAspect))
+	case aspect < signatureMinAspect:
+		width = int(math.Round(float64(height) * signatureMinAspect))
+	}
+
+	// White canvas so the padded area disappears on the printed page.
+	out := image.NewRGBA(image.Rect(0, 0, width, height))
+	draw.Draw(out, out.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
+
+	// Centre the cropped ink; anything outside the source stays white.
+	offset := image.Pt((width-crop.Dx())/2, (height-crop.Dy())/2)
+	draw.Draw(
+		out,
+		image.Rectangle{Min: offset, Max: offset.Add(crop.Size())},
+		src,
+		crop.Min,
+		draw.Over,
+	)
+
+	return out
 }
 
 func addMonthlyChecklistMatrix(m core.Maroto, year int, month time.Month, items []model.ChecklistItem, answers map[int]map[int64]string) {

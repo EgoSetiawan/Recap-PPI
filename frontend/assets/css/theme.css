@@ -2711,6 +2711,7 @@ table.data .row-actions .btn {
 .kepala-sign-modal canvas {
   width: 100%;
   height: auto;
+  aspect-ratio: 2/1;
   border: 1px solid var(--color-border-strong);
   border-radius: 12px;
   background: #fff;

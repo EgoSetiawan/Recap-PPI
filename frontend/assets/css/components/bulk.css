@@ -51,17 +51,11 @@
 .kepala-signature-canvas {
   display: block;
   width: 100%;
-  height: 260px;
+  height: auto;
+  /* Keep 2:1 in sync with the canvas buffer in signature.js. */
+  aspect-ratio: 2 / 1;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   touch-action: none;
-}
-
-@media (max-width: 640px) {
-  #sig-root canvas,
-  #kepala-signature-root canvas,
-  .kepala-signature-canvas {
-    height: 220px;
-  }
 }

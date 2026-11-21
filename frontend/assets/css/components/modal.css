@@ -99,13 +99,16 @@
 }
 #sig-root {
   width: 100%;
-  min-height: 260px;
 }
+/* Signature canvas: 2:1 must stay in sync with the <canvas width="560"
+   height="280"> buffer in signature.js, otherwise pointer scaling per axis
+   differs and the saved signature looks stretched. */
 #sig-root canvas,
 .kepala-signature-canvas {
   display: block;
   width: 100%;
-  height: 260px;
+  height: auto;
+  aspect-ratio: 2 / 1;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #fff;
@@ -125,13 +128,6 @@
   }
   .inspection-form-group-full {
     grid-column: auto;
-  }
-  #sig-root {
-    min-height: 220px;
-  }
-  #sig-root canvas,
-  .kepala-signature-canvas {
-    height: 220px;
   }
   .inspection-form-actions {
     flex-direction: column-reverse;

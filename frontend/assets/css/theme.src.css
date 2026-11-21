@@ -3239,6 +3239,8 @@ table.data .row-actions .btn {
 .kepala-sign-modal canvas {
   width: 100%;
   height: auto;
+  /* Matches the 560x280 canvas buffer in signature.js (2:1). */
+  aspect-ratio: 2 / 1;
   border: 1px solid var(--color-border-strong);
   border-radius: 12px;
   background: #fff;

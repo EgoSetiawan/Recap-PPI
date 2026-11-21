@@ -37,3 +37,15 @@ mockoon/
 
 .prettierrc
 .prettierignore
+
+/deploy
+
+docker-compose.yml
+
+# container build files stay local, same as the compose file above
+backend/Dockerfile
+backend/.dockerignore
+frontend/Dockerfile
+frontend/.dockerignore
+frontend/nginx.conf
+frontend/docker-entrypoint.d/

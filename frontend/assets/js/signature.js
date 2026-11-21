@@ -20,7 +20,9 @@ export class SignaturePad {
   _render() {
     this.root.innerHTML = `
       <div class="sig-draw-panel">
-      <canvas width="560" height="180" aria-label="Area tanda tangan"></canvas>
+      <!-- Buffer ratio must match the CSS aspect-ratio (2:1) so pointer
+           coordinates scale equally on both axes and strokes stay round. -->
+      <canvas width="560" height="280" aria-label="Area tanda tangan"></canvas>
         <div class="signature-actions">
           <button type="button" class="${btnSecondary} ${btnSm}" data-act="clear">Hapus Tanda Tangan</button>
           <span class="hint">Gambar dengan mouse, sentuhan, atau stylus.</span>
