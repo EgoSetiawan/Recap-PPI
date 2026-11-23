@@ -1,7 +1,14 @@
 import { requireAuth, api, hasPermission } from "../api.js";
 import { mountShell, toast, openModal } from "../components/shell.js";
 import { escapeHtml } from "../utils/format.js";
-import { badge, btnSecondary, btnSm, formGroup, tableWrap, empty } from "../ui.js";
+import {
+  badge,
+  btnSecondary,
+  btnSm,
+  formGroup,
+  tableWrap,
+  empty,
+} from "../ui.js";
 import { paginate, renderPagination } from "../components/pagination.js";
 
 const ROLE_LABELS = {
@@ -55,7 +62,9 @@ function roomLabel(room) {
 }
 
 function assignedRooms(user) {
-  const assigned = Array.isArray(user.assigned_room_ids) ? user.assigned_room_ids : [];
+  const assigned = Array.isArray(user.assigned_room_ids)
+    ? user.assigned_room_ids
+    : [];
 
   if (!assigned.length) return [];
 
@@ -73,6 +82,7 @@ function renderTable() {
   const pagination = document.getElementById("users-pagination");
   const result = paginate(users, page, pageSize);
   page = result.page;
+  const canManage = hasPermission("users.manage");
 
   table.innerHTML = `
     <div class="${tableWrap}">
@@ -101,6 +111,29 @@ function renderTable() {
                     : '<span class="muted-text">Belum ditugaskan</span>'
                   : '<span class="muted-text">Semua ruangan</span>';
 
+                const actions = [
+                  canManage
+                    ? `<button
+                        type="button"
+                        class="${btnSecondary} ${btnSm}"
+                        data-edit-user="${escapeHtml(String(user.id))}"
+                      >
+                        Edit
+                      </button>`
+                    : "",
+                  isAnggota
+                    ? `<button
+                        type="button"
+                        class="${btnSecondary} ${btnSm}"
+                        data-assign-user="${escapeHtml(String(user.id))}"
+                      >
+                        Ubah Ruangan
+                      </button>`
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join("");
+
                 return `
                   <tr>
                     <td>
@@ -120,16 +153,8 @@ function renderTable() {
 
                     <td>
                       ${
-                        isAnggota
-                          ? `
-                            <button
-                              type="button"
-                              class="${btnSecondary} ${btnSm}"
-                              data-assign-user="${escapeHtml(String(user.id))}"
-                            >
-                              Ubah Ruangan
-                            </button>
-                          `
+                        actions
+                          ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${actions}</div>`
                           : '<span class="muted-text">—</span>'
                       }
                     </td>
@@ -168,7 +193,9 @@ function renderTable() {
 
 function openRoomAssignment(user) {
   const assigned = new Set(
-    (Array.isArray(user.assigned_room_ids) ? user.assigned_room_ids : []).map(Number),
+    (Array.isArray(user.assigned_room_ids) ? user.assigned_room_ids : []).map(
+      Number,
+    ),
   );
 
   openModal({
@@ -204,9 +231,9 @@ function openRoomAssignment(user) {
     `,
 
     onSubmit: async (_data, form) => {
-      const roomIDs = [...form.querySelectorAll('input[name="room_ids"]:checked')].map((input) =>
-        Number(input.value),
-      );
+      const roomIDs = [
+        ...form.querySelectorAll('input[name="room_ids"]:checked'),
+      ].map((input) => Number(input.value));
 
       await api(`/users/${user.id}/rooms`, {
         method: "PUT",
@@ -221,7 +248,9 @@ function openRoomAssignment(user) {
   });
 }
 
-function openCreateUser() {
+function openUserForm(user = null) {
+  const isEdit = Boolean(user);
+
   const eyeIcon = `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
@@ -274,6 +303,8 @@ function openCreateUser() {
     },
   ];
 
+  const initialRole = isEdit ? normalizeRole(user.role) : "ANGGOTA";
+
   const roleCards = roleOptions
     .map(
       (role, index) => `
@@ -282,7 +313,7 @@ function openCreateUser() {
             type="radio"
             name="role"
             value="${role.value}"
-            ${index === 0 ? "checked" : ""}
+            ${initialRole === role.value || (!initialRole && index === 0) ? "checked" : ""}
           />
 
           <span class="cu-role__top">
@@ -316,8 +347,8 @@ function openCreateUser() {
     : '<div class="cu-empty">Belum ada ruangan. Tambahkan ruangan terlebih dahulu.</div>';
 
   const modal = openModal({
-    title: "Tambah Pengguna",
-    submitLabel: "Buat Pengguna",
+    title: isEdit ? "Edit Pengguna" : "Tambah Pengguna",
+    submitLabel: isEdit ? "Simpan Perubahan" : "Buat Pengguna",
 
     bodyHtml: `
       <div class="create-form">
@@ -331,9 +362,13 @@ function openCreateUser() {
           </div>
 
           <div>
-            <p class="create-form__eyebrow">Akses baru</p>
-            <h4>Buat akun pengguna</h4>
-            <p>Tambahkan pengguna, tentukan perannya, lalu pilih ruangan yang menjadi tanggung jawabnya.</p>
+            <p class="create-form__eyebrow">${isEdit ? "Perbarui akses" : "Akses baru"}</p>
+            <h4>${isEdit ? "Edit akun pengguna" : "Buat akun pengguna"}</h4>
+            <p>${
+              isEdit
+                ? "Perbarui identitas, peran, dan ruangan pengguna. Kosongkan password jika tidak ingin menggantinya."
+                : "Tambahkan pengguna, tentukan perannya, lalu pilih ruangan yang menjadi tanggung jawabnya."
+            }</p>
           </div>
         </div>
 
@@ -373,7 +408,7 @@ function openCreateUser() {
                   <p class="cu-help">Digunakan untuk masuk ke aplikasi.</p>
                 </div>
 
-                <div class="${formGroup} cu-field-full">
+                <div class="${formGroup}">
                   <label for="user-title">Jabatan</label>
                   <input
                     id="user-title"
@@ -381,6 +416,18 @@ function openCreateUser() {
                     autocomplete="organization-title"
                     placeholder="cth. Kepala PPI atau Anggota PPI"
                   />
+                </div>
+
+                <div class="${formGroup}" id="user-nip-group">
+                  <label for="user-nip">NIP</label>
+                  <input
+                    id="user-nip"
+                    name="nip"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    placeholder="cth. 198812152020011001"
+                  />
+                  <p class="cu-help">Dicetak pada laporan untuk Kepala PPI.</p>
                 </div>
               </div>
             </section>
@@ -444,16 +491,20 @@ function openCreateUser() {
               </div>
 
               <div class="${formGroup}">
-                <label for="user-password">Password <span class="cu-required">*</span></label>
+                <label for="user-password">${
+                  isEdit
+                    ? "Password baru (opsional)"
+                    : 'Password <span class="cu-required">*</span>'
+                }</label>
                 <div class="cu-password">
                   <input
                     id="user-password"
                     name="password"
                     type="password"
                     minlength="6"
-                    required
+                    ${isEdit ? "" : "required"}
                     autocomplete="new-password"
-                    placeholder="Minimal 6 karakter"
+                    placeholder="${isEdit ? "Kosongkan jika tidak diganti" : "Minimal 6 karakter"}"
                   />
                   <button
                     type="button"
@@ -467,14 +518,18 @@ function openCreateUser() {
               </div>
 
               <div class="${formGroup}">
-                <label for="user-password-confirm">Konfirmasi password <span class="cu-required">*</span></label>
+                <label for="user-password-confirm">${
+                  isEdit
+                    ? "Konfirmasi password baru"
+                    : 'Konfirmasi password <span class="cu-required">*</span>'
+                }</label>
                 <div class="cu-password">
                   <input
                     id="user-password-confirm"
                     name="password_confirm"
                     type="password"
                     minlength="6"
-                    required
+                    ${isEdit ? "" : "required"}
                     autocomplete="new-password"
                     placeholder="Ulangi password"
                   />
@@ -487,7 +542,11 @@ function openCreateUser() {
                     ${eyeIcon}
                   </button>
                 </div>
-                <p class="cu-help">Gunakan minimal 6 karakter.</p>
+                <p class="cu-help">${
+                  isEdit
+                    ? "Biarkan kosong jika tidak ingin mengganti password."
+                    : "Gunakan minimal 6 karakter."
+                }</p>
               </div>
             </section>
 
@@ -525,6 +584,7 @@ function openCreateUser() {
       const name = String(data.name || "").trim();
       const email = String(data.email || "").trim();
       const title = String(data.title || "").trim();
+      const nip = String(data.nip || "").trim();
       const password = String(data.password || "");
       const passwordConfirm = String(data.password_confirm || "");
       const role = String(data.role || "ANGGOTA");
@@ -534,36 +594,58 @@ function openCreateUser() {
         throw new Error("Nama dan email wajib diisi.");
       }
 
-      if (password.length < 6) {
-        throw new Error("Password minimal 6 karakter.");
+      if (!isEdit && !password) {
+        throw new Error("Password wajib diisi.");
       }
 
-      if (password !== passwordConfirm) {
-        throw new Error("Konfirmasi password tidak sama.");
+      if (password) {
+        if (password.length < 6) {
+          throw new Error("Password minimal 6 karakter.");
+        }
+
+        if (password !== passwordConfirm) {
+          throw new Error("Konfirmasi password tidak sama.");
+        }
       }
 
       const roomIDs =
         role === "ANGGOTA"
-          ? [...form.querySelectorAll('input[name="room_ids"]:checked')].map((input) =>
-              Number(input.value),
+          ? [...form.querySelectorAll('input[name="room_ids"]:checked')].map(
+              (input) => Number(input.value),
             )
           : [];
 
-      await api("/users", {
-        method: "POST",
-        body: {
-          name,
-          email,
-          title,
-          password,
-          role,
-          status,
-          assigned_room_ids: roomIDs,
-        },
-      });
+      const payload = {
+        name,
+        email,
+        title,
+        nip,
+        role,
+        status,
+        assigned_room_ids: roomIDs,
+      };
 
-      toast("Pengguna berhasil dibuat", "success");
-      page = 1;
+      if (password) {
+        payload.password = password;
+      }
+
+      if (isEdit) {
+        await api(`/users/${user.id}`, {
+          method: "PUT",
+          body: payload,
+        });
+
+        toast("Pengguna berhasil diperbarui", "success");
+      } else {
+        await api("/users", {
+          method: "POST",
+          body: payload,
+        });
+
+        toast("Pengguna berhasil dibuat", "success");
+        page = 1;
+      }
+
       await load();
     },
   });
@@ -583,13 +665,16 @@ function openCreateUser() {
   const roomCount = form.querySelector("#user-room-count");
   const roomSearch = form.querySelector("#user-room-search");
 
-  const checkedRooms = () => roomChecks.filter((input) => input.checked && !input.disabled).length;
+  const checkedRooms = () =>
+    roomChecks.filter((input) => input.checked && !input.disabled).length;
 
   const updateRoomCount = () => {
     if (!roomCount) return;
 
     const count = checkedRooms();
-    roomCount.textContent = count ? `${count} ruangan dipilih` : "Belum ada ruangan dipilih";
+    roomCount.textContent = count
+      ? `${count} ruangan dipilih`
+      : "Belum ada ruangan dipilih";
   };
 
   const updateRoomState = () => {
@@ -599,6 +684,9 @@ function openCreateUser() {
     if (roomToolbar) roomToolbar.style.display = isAnggota ? "" : "none";
     if (roomList) roomList.style.display = isAnggota ? "" : "none";
     roomNote?.classList.toggle("is-visible", !isAnggota);
+
+    const nipGroup = form.querySelector("#user-nip-group");
+    if (nipGroup) nipGroup.style.display = isAnggota ? "none" : "";
 
     roomChecks.forEach((input) => {
       input.disabled = !isAnggota;
@@ -630,9 +718,11 @@ function openCreateUser() {
     button.addEventListener("click", () => {
       const shouldCheck = button.dataset.roomAction === "all";
 
-      form.querySelectorAll(".cu-room:not(.is-hidden) input[name='room_ids']").forEach((input) => {
-        if (!input.disabled) input.checked = shouldCheck;
-      });
+      form
+        .querySelectorAll(".cu-room:not(.is-hidden) input[name='room_ids']")
+        .forEach((input) => {
+          if (!input.disabled) input.checked = shouldCheck;
+        });
 
       updateRoomCount();
     });
@@ -647,15 +737,57 @@ function openCreateUser() {
       const show = input.type === "password";
       input.type = show ? "text" : "password";
       button.innerHTML = show ? eyeOffIcon : eyeIcon;
-      button.setAttribute("aria-label", show ? "Sembunyikan password" : "Tampilkan password");
+      button.setAttribute(
+        "aria-label",
+        show ? "Sembunyikan password" : "Tampilkan password",
+      );
     });
   });
+
+  if (isEdit) {
+    const setValue = (selector, value) => {
+      const input = form.querySelector(selector);
+      if (input) input.value = value;
+    };
+
+    setValue("#user-name", user.name || "");
+    setValue("#user-email", user.email || "");
+    setValue("#user-title", user.title || "");
+    setValue("#user-nip", user.nip || "");
+
+    const roleValue = normalizeRole(user.role);
+    const roleInput = form.querySelector(
+      `input[name="role"][value="${roleValue}"]`,
+    );
+    if (roleInput) roleInput.checked = true;
+
+    const statusInput = form.querySelector("#user-status");
+    if (statusInput) {
+      statusInput.value =
+        String(user.status || "ACTIVE").toUpperCase() === "INACTIVE"
+          ? "INACTIVE"
+          : "ACTIVE";
+    }
+
+    const assigned = new Set(
+      (Array.isArray(user.assigned_room_ids) ? user.assigned_room_ids : []).map(
+        Number,
+      ),
+    );
+
+    roomChecks.forEach((input) => {
+      input.checked = assigned.has(Number(input.value));
+    });
+  }
 
   updateRoomState();
 }
 
 async function load() {
-  const [usersResponse, roomsResponse] = await Promise.all([api("/users"), api("/rooms")]);
+  const [usersResponse, roomsResponse] = await Promise.all([
+    api("/users"),
+    api("/rooms"),
+  ]);
 
   users = unwrapArray(usersResponse);
   rooms = unwrapArray(roomsResponse);
@@ -682,10 +814,19 @@ async function main() {
 
   if (addUserButton && hasPermission("users.manage")) {
     addUserButton.classList.remove("hidden");
-    addUserButton.addEventListener("click", openCreateUser);
+    addUserButton.addEventListener("click", () => openUserForm());
   }
 
   document.getElementById("users-table").addEventListener("click", (event) => {
+    const editButton = event.target.closest("[data-edit-user]");
+    if (editButton) {
+      const userID = Number(editButton.getAttribute("data-edit-user"));
+      const target = users.find((item) => Number(item.id) === userID);
+
+      if (target) openUserForm(target);
+      return;
+    }
+
     const button = event.target.closest("[data-assign-user]");
     if (!button) return;
 

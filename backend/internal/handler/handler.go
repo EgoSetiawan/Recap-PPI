@@ -304,6 +304,38 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	response.Created(c, user, "Pengguna berhasil dibuat")
 }
 
+func (h *Handler) UpdateUser(c *gin.Context) {
+	id, err := parseID(c, "id")
+	if err != nil || id <= 0 {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"Invalid user ID",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	var in service.UpdateUserInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.FailCode(
+			c,
+			"INVALID_JSON",
+			"Invalid request body",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	user, err := h.Svc.UpdateUser(middleware.CurrentUser(c), id, in, c.ClientIP())
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.OK(c, user, "Pengguna berhasil diperbarui")
+}
+
 func (h *Handler) ListAuditLogs(c *gin.Context) {
 	limit := 100
 	if raw := c.Query("limit"); raw != "" {

@@ -85,6 +85,7 @@ func main() {
 		authed.POST("/rooms", h.CreateRoom)
 		authed.POST("/users", h.CreateUser)
 		authed.GET("/users", h.ListUsers)
+		authed.PUT("/users/:id", h.UpdateUser)
 		authed.PUT("/users/:id/rooms", h.UpdateUserRooms)
 		authed.GET("/audit-logs", h.ListAuditLogs)
 		authed.PUT("/edit-checklist/:id", h.ReplaceChecklistForDate)

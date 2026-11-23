@@ -210,10 +210,21 @@ const RoomWithActors = `
         u.nip,
         u.title
     FROM rooms r
-    LEFT JOIN user_assigned_rooms uar
-        ON uar.room_id = r.id
-    LEFT JOIN users u
-        ON u.id = uar.user_id
+    LEFT JOIN (
+        SELECT
+            uar.room_id,
+            u.id,
+            u.name,
+            u.nip,
+            u.title
+        FROM user_assigned_rooms uar
+        JOIN users u
+            ON u.id = uar.user_id
+        JOIN roles ro
+            ON ro.id = u.role_id
+        WHERE ro.name = 'ANGGOTA'
+    ) u
+        ON u.room_id = r.id
 	`
 
 func (r *Repo) scanRoomWithActors(rows interface{ Scan(dest ...any) error }) (*model.Room, *model.User, error) {
@@ -755,9 +766,9 @@ func (r *Repo) CreateUser(user *model.User, passwordHash string) error {
 	}
 	defer tx.Rollback()
 	err = tx.QueryRow(
-		`INSERT INTO users (name, email, title, password_hash, role_id, status) VALUES ($1,$2,$3,$4,$5,$6)
+		`INSERT INTO users (name, email, title, nip, password_hash, role_id, status) VALUES ($1,$2,$3,$4,$5,$6,$7)
 		 RETURNING id, created_at, updated_at`,
-		user.Name, user.Email, user.Title, passwordHash, user.RoleID, user.Status,
+		user.Name, user.Email, user.Title, user.Nip, passwordHash, user.RoleID, user.Status,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return err
@@ -765,5 +776,36 @@ func (r *Repo) CreateUser(user *model.User, passwordHash string) error {
 	if err := r.setAssignedRooms(tx, user.ID, user.AssignedRoomIDs); err != nil {
 		return err
 	}
+	return tx.Commit()
+}
+
+// Updates a user's profile and, when passwordHash is not empty, their password.
+func (r *Repo) UpdateUser(user *model.User, passwordHash string) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		`UPDATE users
+		    SET name = $2,
+		        email = $3,
+		        title = $4,
+		        nip = $5,
+		        role_id = $6,
+		        status = $7,
+		        password_hash = COALESCE(NULLIF($8, ''), password_hash),
+		        updated_at = NOW()
+		  WHERE id = $1`,
+		user.ID, user.Name, user.Email, user.Title, user.Nip, user.RoleID, user.Status, passwordHash,
+	); err != nil {
+		return err
+	}
+
+	if err := r.setAssignedRooms(tx, user.ID, user.AssignedRoomIDs); err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }

@@ -34,6 +34,21 @@ type UserInput struct {
 	Name            string  `json:"name"`
 	Email           string  `json:"email"`
 	Title           string  `json:"title"`
+	Nip             string  `json:"nip"`
+	Password        string  `json:"password"`
+	Role            string  `json:"role"`
+	Status          string  `json:"status"`
+	RoleID          int64   `json:"role_id"`
+	AssignedRoomIDs []int64 `json:"assigned_room_ids"`
+}
+
+// Fields a super admin may change on an existing user. Password is optional:
+// an empty value keeps the current password.
+type UpdateUserInput struct {
+	Name            string  `json:"name"`
+	Email           string  `json:"email"`
+	Title           string  `json:"title"`
+	Nip             string  `json:"nip"`
 	Password        string  `json:"password"`
 	Role            string  `json:"role"`
 	Status          string  `json:"status"`
@@ -423,35 +438,9 @@ func (s *Service) UpdateUserRooms(actor *model.User, userID int64, roomIDs []int
 
 	oldRoomIDs := append([]int64{}, target.AssignedRoomIDs...)
 
-	normalized := make([]int64, 0, len(roomIDs))
-	seen := make(map[int64]struct{}, len(roomIDs))
-
-	for _, roomID := range roomIDs {
-		if roomID <= 0 {
-			return nil, response.Err(
-				"VALIDATION_ERROR",
-				"ID ruangan tidak valid",
-				http.StatusUnprocessableEntity,
-			)
-		}
-		if _, exists := seen[roomID]; exists {
-			continue
-		}
-
-		room, err := s.Repo.GetRoom(roomID)
-		if err != nil {
-			return nil, err
-		}
-		if room == nil {
-			return nil, response.Err(
-				"NOT_FOUND",
-				fmt.Sprintf("Ruangan %d tidak ditemukan", roomID),
-				http.StatusNotFound,
-			)
-		}
-
-		seen[roomID] = struct{}{}
-		normalized = append(normalized, roomID)
+	normalized, err := s.normalizeRoomIDs(roomIDs)
+	if err != nil {
+		return nil, err
 	}
 
 	target.AssignedRoomIDs = normalized
@@ -540,32 +529,9 @@ func (s *Service) CreateUsers(actor *model.User, in UserInput, ipAddress string)
 		)
 	}
 
-	roleID := in.RoleID
-	if roleID <= 0 && strings.TrimSpace(in.Role) != "" {
-		roleName := strings.ToUpper(strings.TrimSpace(in.Role))
-		switch roleName {
-		case "ATASAN_PPI", "KEPALA_PPI":
-			roleName = "KEPALA"
-		case "ANGGOTA_PPI":
-			roleName = "ANGGOTA"
-		}
-
-		role, err := s.Repo.GetRoleByName(roleName)
-		if err != nil {
-			return nil, err
-		}
-		if role == nil {
-			return nil, response.Err("VALIDATION_ERROR", "Role tidak valid", http.StatusUnprocessableEntity)
-		}
-		roleID = role.ID
-	}
-
-	role, err := s.Repo.GetRole(roleID)
+	role, err := s.resolveRole(in.RoleID, in.Role)
 	if err != nil {
 		return nil, err
-	}
-	if role == nil {
-		return nil, response.Err("VALIDATION_ERROR", "Role tidak valid", http.StatusUnprocessableEntity)
 	}
 
 	existing, err := s.Repo.GetByEmail(strings.TrimSpace(in.Email))
@@ -585,14 +551,22 @@ func (s *Service) CreateUsers(actor *model.User, in UserInput, ipAddress string)
 	if err != nil {
 		return nil, err
 	}
-	status := in.Status
-	if status == "" {
-		status = "ACTIVE"
+	status := "ACTIVE"
+	if raw := strings.TrimSpace(in.Status); raw != "" {
+		status = normalizeUserStatus(raw)
+		if status == "" {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Status pengguna harus ACTIVE atau INACTIVE",
+				http.StatusUnprocessableEntity,
+			)
+		}
 	}
 	u := &model.User{
 		Name:            strings.TrimSpace(in.Name),
 		Email:           strings.TrimSpace(in.Email),
 		Title:           strings.TrimSpace(in.Title),
+		Nip:             strings.TrimSpace(in.Nip),
 		RoleID:          role.ID,
 		Role:            role.Name,
 		Status:          status,
@@ -614,6 +588,7 @@ func (s *Service) CreateUsers(actor *model.User, in UserInput, ipAddress string)
 		map[string]interface{}{
 			"name":     u.Name,
 			"email":    u.Email,
+			"nip":      u.Nip,
 			"role":     u.Role,
 			"room_ids": u.AssignedRoomIDs,
 		},
@@ -621,4 +596,265 @@ func (s *Service) CreateUsers(actor *model.User, in UserInput, ipAddress string)
 	)
 
 	return publicUser(u), nil
+}
+
+// Updates an existing user. Only super admins may edit users, matching create.
+func (s *Service) UpdateUser(actor *model.User, userID int64, in UpdateUserInput, ipAddress string) (*model.User, error) {
+	if actor == nil {
+		return nil, response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
+	if !auth.IsAdmin(actor.Role) {
+		return nil, response.Err(
+			"FORBIDDEN",
+			"Hanya admin yang dapat mengubah pengguna",
+			http.StatusForbidden,
+		)
+	}
+
+	if userID <= 0 {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"ID pengguna tidak valid",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	target, err := s.Repo.GetByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	if target == nil {
+		return nil, response.Err(
+			"NOT_FOUND",
+			"Pengguna tidak ditemukan",
+			http.StatusNotFound,
+		)
+	}
+
+	name := strings.TrimSpace(in.Name)
+	email := strings.TrimSpace(in.Email)
+	if name == "" || email == "" {
+		return nil, response.Err(
+			"VALIDATION_ERROR",
+			"Nama dan email wajib diisi",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	role, err := s.resolveRole(in.RoleID, in.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	status := target.Status
+	if raw := strings.TrimSpace(in.Status); raw != "" {
+		status = normalizeUserStatus(raw)
+		if status == "" {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Status pengguna harus ACTIVE atau INACTIVE",
+				http.StatusUnprocessableEntity,
+			)
+		}
+	}
+
+	if actor.ID == userID {
+		if !auth.IsAdmin(role.Name) {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Tidak dapat mengubah peran akun sendiri dari Super Admin",
+				http.StatusUnprocessableEntity,
+			)
+		}
+		if status != "ACTIVE" {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Tidak dapat menonaktifkan akun sendiri",
+				http.StatusUnprocessableEntity,
+			)
+		}
+	}
+
+	existing, err := s.Repo.GetByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil && existing.ID != userID {
+		return nil, response.Err(
+			"EMAIL_EXISTS",
+			"Email sudah digunakan",
+			http.StatusConflict,
+		)
+	}
+
+	passwordHash := ""
+	if pass := strings.TrimSpace(in.Password); pass != "" {
+		if len(pass) < 6 {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Password minimal 6 karakter",
+				http.StatusUnprocessableEntity,
+			)
+		}
+		hash, err := auth.HashPassword(pass)
+		if err != nil {
+			return nil, err
+		}
+		passwordHash = hash
+	}
+
+	// Room scope is edited for ANGGOTA; other roles keep the assignments they
+	// already have (the report reads KEPALA room assignments too).
+	roomIDs := append([]int64{}, target.AssignedRoomIDs...)
+	switch {
+	case auth.IsAnggota(role.Name):
+		normalized, err := s.normalizeRoomIDs(in.AssignedRoomIDs)
+		if err != nil {
+			return nil, err
+		}
+		roomIDs = normalized
+	case auth.IsAnggota(target.Role):
+		roomIDs = []int64{}
+	}
+
+	oldValue := map[string]interface{}{
+		"name":     target.Name,
+		"email":    target.Email,
+		"title":    target.Title,
+		"nip":      target.Nip,
+		"role":     target.Role,
+		"status":   target.Status,
+		"room_ids": append([]int64{}, target.AssignedRoomIDs...),
+	}
+
+	target.Name = name
+	target.Email = email
+	target.Title = strings.TrimSpace(in.Title)
+	target.Nip = strings.TrimSpace(in.Nip)
+	target.RoleID = role.ID
+	target.Role = role.Name
+	target.Status = status
+	target.AssignedRoomIDs = roomIDs
+
+	if err := s.Repo.UpdateUser(target, passwordHash); err != nil {
+		return nil, err
+	}
+
+	updated, err := s.Repo.GetByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return nil, response.Err(
+			"NOT_FOUND",
+			"Pengguna tidak ditemukan",
+			http.StatusNotFound,
+		)
+	}
+
+	s.recordAudit(
+		actor,
+		"UPDATE_USER",
+		"user",
+		userID,
+		oldValue,
+		map[string]interface{}{
+			"name":     updated.Name,
+			"email":    updated.Email,
+			"nip":      updated.Nip,
+			"role":     updated.Role,
+			"status":   updated.Status,
+			"room_ids": updated.AssignedRoomIDs,
+		},
+		ipAddress,
+	)
+
+	return publicUser(updated), nil
+}
+
+// Resolves a role from an explicit ID or a role name (accepting legacy aliases).
+func (s *Service) resolveRole(roleID int64, roleName string) (*model.Role, error) {
+	if roleID <= 0 && strings.TrimSpace(roleName) != "" {
+		role, err := s.Repo.GetRoleByName(canonicalRoleName(roleName))
+		if err != nil {
+			return nil, err
+		}
+		if role == nil {
+			return nil, response.Err("VALIDATION_ERROR", "Role tidak valid", http.StatusUnprocessableEntity)
+		}
+		roleID = role.ID
+	}
+
+	role, err := s.Repo.GetRole(roleID)
+	if err != nil {
+		return nil, err
+	}
+	if role == nil {
+		return nil, response.Err("VALIDATION_ERROR", "Role tidak valid", http.StatusUnprocessableEntity)
+	}
+	return role, nil
+}
+
+// Maps legacy role aliases onto the names stored in the roles table.
+func canonicalRoleName(role string) string {
+	name := strings.ToUpper(strings.TrimSpace(role))
+	switch name {
+	case "ATASAN_PPI", "KEPALA_PPI":
+		return "KEPALA"
+	case "ANGGOTA_PPI":
+		return "ANGGOTA"
+	default:
+		return name
+	}
+}
+
+func normalizeUserStatus(status string) string {
+	switch strings.ToUpper(strings.TrimSpace(status)) {
+	case "ACTIVE":
+		return "ACTIVE"
+	case "INACTIVE":
+		return "INACTIVE"
+	default:
+		return ""
+	}
+}
+
+// Validates and de-duplicates room IDs, rejecting rooms that do not exist.
+func (s *Service) normalizeRoomIDs(roomIDs []int64) ([]int64, error) {
+	normalized := make([]int64, 0, len(roomIDs))
+	seen := make(map[int64]struct{}, len(roomIDs))
+
+	for _, roomID := range roomIDs {
+		if roomID <= 0 {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"ID ruangan tidak valid",
+				http.StatusUnprocessableEntity,
+			)
+		}
+		if _, exists := seen[roomID]; exists {
+			continue
+		}
+
+		room, err := s.Repo.GetRoom(roomID)
+		if err != nil {
+			return nil, err
+		}
+		if room == nil {
+			return nil, response.Err(
+				"NOT_FOUND",
+				fmt.Sprintf("Ruangan %d tidak ditemukan", roomID),
+				http.StatusNotFound,
+			)
+		}
+
+		seen[roomID] = struct{}{}
+		normalized = append(normalized, roomID)
+	}
+
+	return normalized, nil
 }
