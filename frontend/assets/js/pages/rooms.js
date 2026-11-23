@@ -287,7 +287,6 @@ async function main() {
 
                               <span class="actor-copy">
                                 <strong>${escapeHtml(actor.name || "—")}</strong>
-                                ${actor.nip ? `<small>${escapeHtml(actor.nip)}</small>` : ""}
                               </span>
                             </div>
                           `,

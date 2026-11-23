@@ -1,6 +1,4 @@
-/* =========================================================
-   INSPECTION CREATE PAGE
-   ========================================================= */
+/* INSPECTION CREATE PAGE */
 
 .inspection-create-page {
   width: 100%;
@@ -11,9 +9,7 @@
   margin-bottom: 16px;
 }
 
-/* =========================================================
-   ROOM AND MONTH FORM
-   ========================================================= */
+/* ROOM AND MONTH FORM */
 
 #detail-root .inspection-form-grid {
   display: grid;
@@ -47,9 +43,7 @@
   margin-top: 20px;
 }
 
-/* =========================================================
-   SELECTED ROOM
-   ========================================================= */
+/* SELECTED ROOM */
 
 #detail-root .inspection-selected-room {
   display: flex;
@@ -63,9 +57,7 @@
   color: #64748b;
 }
 
-/* =========================================================
-   MONTHLY CALENDAR
-   ========================================================= */
+/* MONTHLY CALENDAR */
 
 #detail-root #create-calendar {
   width: 100%;
@@ -297,9 +289,7 @@
   font-size: 13px;
 }
 
-/* =========================================================
-   DAILY CHECKLIST
-   ========================================================= */
+/* DAILY CHECKLIST */
 
 #detail-root #selected-date-title {
   margin: 0 0 8px;
@@ -343,9 +333,7 @@
   max-width: 100%;
 }
 
-/* =========================================================
-   SIGNATURE ACTIONS
-   ========================================================= */
+/* SIGNATURE ACTIONS */
 
 #detail-root .signature-action {
   display: flex;
@@ -359,10 +347,7 @@
   font-size: 13px;
 }
 
-/* =========================================================
-   SIGNATURE MODAL
-   This modal is appended directly to document.body.
-   ========================================================= */
+/* SIGNATURE MODAL (appended directly to document.body) */
 
 #signature-modal.kepala-sign-modal {
   display: none !important;
@@ -468,9 +453,7 @@
   background: #f1f5f9;
 }
 
-/* =========================================================
-   RESPONSIVE
-   ========================================================= */
+/* RESPONSIVE */
 
 @media (max-width: 768px) {
   #detail-root .inspection-calendar {

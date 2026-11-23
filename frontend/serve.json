@@ -48,6 +48,10 @@
     {
       "source": "/pages/latest",
       "destination": "/pages/latest.html"
+    },
+    {
+      "source": "/pages/inspection-preview",
+      "destination": "/pages/inspection-preview.html"
     }
   ]
 }

@@ -11,10 +11,12 @@ import (
 	"image/png"
 	"log"
 	"math"
+	"net/http"
 	"strings"
 	"time"
 
 	"PPI/internal/model"
+	"PPI/internal/response"
 
 	"github.com/johnfercher/maroto/v2"
 	"github.com/johnfercher/maroto/v2/pkg/components/col"
@@ -60,13 +62,16 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 	if err != nil {
 		return nil, "", err
 	}
-	ketuaName, ketuaNip, err := s.Repo.GetKetua()
-	if err != nil {
-		return nil, "", fmt.Errorf("get ketua name: %w", err)
-	}
-
 	if ins == nil || ins.Room == nil {
 		return nil, "", fmt.Errorf("inspection or room not found")
+	}
+	// Draft preview only; PDF export is blocked.
+	if ins.Status == StatusDraft {
+		return nil, "", response.Err(
+			"INVALID_STATUS",
+			"Pemeriksaan masih berstatus draft; gunakan pratinjau untuk melihat laporan",
+			http.StatusForbidden,
+		)
 	}
 	year := ins.InspectionMonth.Year()
 	month := ins.InspectionMonth.Month()
@@ -185,7 +190,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		pdfData.Items,
 		pdfData.Answers,
 	)
-	//Spacing for notes
+	// Spacing for notes.
 	m.AddRow(
 		6,
 		text.NewCol(18, "", props.Text{Size: 1}),
@@ -234,28 +239,12 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 	kepalaSignature := findSignatureByRole(ins.Signatures, "KEPALA")
 	anggotaSignature := findSignatureByRole(ins.Signatures, "ANGGOTA")
 
-	ketuaDisplayName, ketuaDisplayNip := ketuaName, ketuaNip
-	if kepalaSignature != nil {
-		if name := strings.TrimSpace(kepalaSignature.SignerName); name != "" {
-			ketuaDisplayName = name
-		}
-		if nip := s.signatureSignerNip(kepalaSignature); nip != "" {
-			ketuaDisplayNip = nip
-		}
+	signers, err := s.resolveReportSigners(ins, kepalaSignature, anggotaSignature)
+	if err != nil {
+		return nil, "", err
 	}
-
-	anggotaDisplayName := ""
-	if anggotaSignature != nil {
-		anggotaDisplayName = strings.TrimSpace(anggotaSignature.SignerName)
-	}
-
-	// Use the assigned inspector as fallback.
-	if anggotaDisplayName == "" && ins.InspectorID > 0 {
-		if inspector, err := s.Repo.GetByID(ins.InspectorID); err == nil && inspector != nil {
-			anggotaDisplayName = strings.TrimSpace(inspector.Name)
-		}
-	}
-
+	ketuaDisplayName, ketuaDisplayNip := signers.KepalaName, signers.KepalaNip
+	anggotaDisplayName := signers.AnggotaName
 	if anggotaDisplayName == "" {
 		anggotaDisplayName = actor.Name
 	}
@@ -413,25 +402,18 @@ func signatureDataURLToPNG(dataURL string) ([]byte, error) {
 }
 
 const (
-	// Channel values at or above this are treated as blank paper while
-	// looking for the signature ink.
+	// Channels at or above this are blank paper, not signature ink.
 	signatureWhiteThreshold uint32 = 0xF000
 	// Blank space kept around the ink, relative to the ink size.
 	signatureTrimPadding = 0.06
-	// The report sizes a signature by the row height, so the printed width
-	// follows the aspect ratio. Padding keeps it inside a printable range.
+	// Padding keeps the signature aspect ratio within the printable range.
 	signatureMinAspect = 1.2
 	signatureMaxAspect = 6.0
 	// Ink smaller than this is not worth cropping around (stray dot).
 	signatureMinInkPixels = 3
 )
 
-// Crops the blank paper around a signature.
-//
-// The report centres the image it receives, not the drawing inside it, so a
-// signature drawn on the left of a wide canvas used to print off-centre and
-// small. Trimming the empty margins makes the drawn stroke fill the image, and
-// the padded aspect ratio keeps the printed width inside the report cell.
+// Crops blank paper around a signature so the ink fills the report cell.
 func trimSignatureMargins(src image.Image) image.Image {
 	bounds := src.Bounds()
 	minX, minY := bounds.Max.X, bounds.Max.Y

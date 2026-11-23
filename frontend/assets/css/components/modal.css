@@ -100,9 +100,7 @@
 #sig-root {
   width: 100%;
 }
-/* Signature canvas: 2:1 must stay in sync with the <canvas width="560"
-   height="280"> buffer in signature.js, otherwise pointer scaling per axis
-   differs and the saved signature looks stretched. */
+/* Signature canvas is 2:1 to match the 560x280 buffer in signature.js. */
 #sig-root canvas,
 .kepala-signature-canvas {
   display: block;

@@ -49,3 +49,6 @@ frontend/Dockerfile
 frontend/.dockerignore
 frontend/nginx.conf
 frontend/docker-entrypoint.d/
+
+# local build output
+backend/bin/

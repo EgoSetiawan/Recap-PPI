@@ -108,7 +108,7 @@ function renderTable() {
                       ${user.email ? `<div class="page-meta">${escapeHtml(user.email)}</div>` : ""}
                     </td>
 
-                    <td class="hide-sm">${escapeHtml(user.nip || "—")}</td>
+                    <td class="hide-sm">${isAnggota ? "—" : escapeHtml(user.nip || "—")}</td>
 
                     <td>
                       <span class="${badge(ROLE_BADGES[normalizedRole] || "muted")}">

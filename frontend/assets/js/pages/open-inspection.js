@@ -130,7 +130,7 @@ async function main() {
         (inspection) =>
           String(inspection.status || "")
             .trim()
-            .toUpperCase() === "OPEN",
+            .toUpperCase() === "DRAFT",
       );
 
       page = 1;

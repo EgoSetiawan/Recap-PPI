@@ -51,8 +51,7 @@ func TestSignatureDataURLToPNG(t *testing.T) {
 		t.Fatalf("converted signature format = %q, want png", format)
 	}
 
-	// The blank margins around the stroke are cropped, so the result no longer
-	// has the source dimensions but must still contain the ink.
+	// Margins are cropped, so the image must still contain the ink.
 	minX, minY, maxX, maxY, ok := inkBounds(img)
 	if !ok {
 		t.Fatal("converted signature has no ink")
@@ -108,8 +107,7 @@ func TestSignatureImageColEmbedsImageInPDF(t *testing.T) {
 	}
 }
 
-// Builds a data URL for a white bitmap of the given size, with ink painted by
-// the callback.
+// Builds a test data URL of white with ink painted by the callback.
 func signatureDataURLWithInk(t *testing.T, width, height int, ink func(*image.RGBA)) string {
 	t.Helper()
 
@@ -161,8 +159,7 @@ func inkBounds(img image.Image) (minX, minY, maxX, maxY int, ok bool) {
 }
 
 func TestSignatureDataURLToPNGCentersInk(t *testing.T) {
-	// Ink confined to the left third of a wide canvas, like a person starting
-	// to write at the left edge of the pad.
+	// Ink confined to the left third of a wide canvas.
 	dataURL := signatureDataURLWithInk(t, 560, 280, func(img *image.RGBA) {
 		for x := 60; x < 200; x++ {
 			for y := 100; y < 160; y++ {
@@ -202,8 +199,7 @@ func TestSignatureDataURLToPNGCentersInk(t *testing.T) {
 }
 
 func TestSignatureDataURLToPNGClampsExtremeAspect(t *testing.T) {
-	// Very wide, very short ink: trimming alone would produce an image wider
-	// than the report cell.
+	// Very wide, short ink would overflow the cell without padding.
 	dataURL := signatureDataURLWithInk(t, 560, 280, func(img *image.RGBA) {
 		for x := 20; x < 540; x++ {
 			for y := 138; y < 142; y++ {

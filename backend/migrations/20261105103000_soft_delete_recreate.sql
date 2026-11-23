@@ -1,6 +1,5 @@
 -- +goose Up
--- Active inspections stay unique per room/month, while soft-deleted records
--- no longer block recreating the same period.
+-- Active inspections stay unique per room/month; soft-deleted ones do not block recreating.
 ALTER TABLE inspections
     DROP CONSTRAINT IF EXISTS inspections_room_id_inspection_month_key;
 

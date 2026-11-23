@@ -1,10 +1,7 @@
 import { btnSecondary, btnSm } from "./ui.js";
 
 export class SignaturePad {
-  /**
-   * @param {HTMLElement} root
-   * @param {{ required?: boolean }} [opts]
-   */
+  /** Signature pad controller; opts.required marks signing mandatory. */
   constructor(root, opts = {}) {
     this.root = root;
     this.mode = "draw";
@@ -20,8 +17,7 @@ export class SignaturePad {
   _render() {
     this.root.innerHTML = `
       <div class="sig-draw-panel">
-      <!-- Buffer ratio must match the CSS aspect-ratio (2:1) so pointer
-           coordinates scale equally on both axes and strokes stay round. -->
+      <!-- Keep the 2:1 buffer ratio in sync with CSS so strokes stay round. -->
       <canvas width="560" height="280" aria-label="Area tanda tangan"></canvas>
         <div class="signature-actions">
           <button type="button" class="${btnSecondary} ${btnSm}" data-act="clear">Hapus Tanda Tangan</button>

@@ -1,0 +1,169 @@
+/* Preview rendered using HTML. */
+
+.report-sheet {
+  background: #fff;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 14px;
+  padding: 28px 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+  color: #111;
+}
+
+.report-head {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.report-head h2 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.report-head p {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.report-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 10px;
+  margin: 0 0 18px;
+  font-size: 0.85rem;
+}
+
+.report-meta dt {
+  font-weight: 500;
+}
+
+.report-meta dd {
+  margin: 0;
+}
+
+.report-section-title {
+  margin: 22px 0 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.68rem;
+}
+
+.report-table th,
+.report-table td {
+  border: 1px solid #64748b;
+  padding: 4px 3px;
+  vertical-align: middle;
+}
+
+.report-table thead th {
+  text-align: center;
+  font-weight: 700;
+  background: #f1f5f9;
+}
+
+.report-table .col-no {
+  width: 28px;
+  text-align: center;
+}
+
+.report-table .col-item {
+  text-align: left;
+  word-break: break-word;
+}
+
+.report-table .col-day {
+  width: 22px;
+  text-align: center;
+}
+
+.report-table td.col-day svg {
+  width: 11px;
+  height: 11px;
+  color: #0f766e;
+}
+
+.report-empty {
+  text-align: center;
+  font-style: italic;
+  color: #64748b;
+}
+
+.report-notes {
+  border: 1px solid #64748b;
+  min-height: 64px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+
+.report-signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 22px;
+}
+
+.report-signature {
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.report-signature-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.report-signature-image {
+  display: block;
+  max-width: 100%;
+  max-height: 90px;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+.report-signature-empty {
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.report-signature-name {
+  margin-top: 6px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.report-signature-nip {
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+@media (max-width: 640px) {
+  .report-sheet {
+    padding: 16px 12px;
+  }
+
+  .report-table {
+    font-size: 0.6rem;
+  }
+
+  .report-table .col-day {
+    width: 16px;
+  }
+
+  .report-signatures {
+    grid-template-columns: 1fr;
+  }
+}

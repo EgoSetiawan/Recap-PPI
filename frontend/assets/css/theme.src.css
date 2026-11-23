@@ -1,14 +1,4 @@
-/* =========================================================
-   Pemeriksaan Ruangan — modern UI layer
-   ---------------------------------------------------------
-   Source file. Compile to ./theme.css with:
-
-     bun run css:theme
-
-   The output is loaded after app.css on every page, so it
-   re-skins the legacy component classes without touching the
-   old Tailwind bundle.
-   ========================================================= */
+/* Modern UI layer, compiled to theme.css with bun run css:theme. */
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
@@ -16,9 +6,7 @@
 @source "../../**/*.html";
 @source "../**/*.js";
 
-/* =========================================================
-   1. Design tokens
-   ========================================================= */
+/* 1. Design tokens */
 
 @theme {
   --font-sans: "Plus Jakarta Sans", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -77,9 +65,7 @@
   --leading-tight: 1.2;
 }
 
-/* =========================================================
-   2. Base
-   ========================================================= */
+/* 2. Base */
 
 @layer base {
   html {
@@ -173,14 +159,9 @@
   }
 }
 
-/* =========================================================
-   3. App shell
-   ========================================================= */
+/* 3. App shell */
 
-/* Components stay unlayered on purpose: the legacy app.css keeps a
-   few unlayered rules (calendar, mobile shell) and an unlayered
-   declaration always beats a layered one. Being unlayered and last
-   lets this file win without !important. */
+/* Components stay unlayered so they win over legacy app.css rules. */
 .app-shell {
   display: flex;
   width: 100%;
@@ -812,9 +793,7 @@
   gap: 8px;
 }
 
-/* =========================================================
-     4. Surfaces
-     ========================================================= */
+/* 4. Surfaces */
 
 .card,
 .panel {
@@ -1177,9 +1156,7 @@
   box-shadow: var(--shadow-sm);
 }
 
-/* =========================================================
-     5. Controls
-     ========================================================= */
+/* 5. Controls */
 
 .btn {
   display: inline-flex;
@@ -1639,9 +1616,7 @@
   color: var(--color-primary);
 }
 
-/* =========================================================
-     6. Tables
-     ========================================================= */
+/* 6. Tables */
 
 .table-wrap,
 .table-container {
@@ -1889,9 +1864,7 @@ table.data .row-actions .btn {
   min-width: 120px;
 }
 
-/* =========================================================
-     7. Overlays
-     ========================================================= */
+/* 7. Overlays */
 
 .modal-backdrop {
   position: fixed;
@@ -2165,9 +2138,7 @@ table.data .row-actions .btn {
   height: 18px;
 }
 
-/* =========================================================
-     8. Login
-     ========================================================= */
+/* 8. Login */
 
 .login-page {
   display: flex;
@@ -2479,9 +2450,7 @@ table.data .row-actions .btn {
   text-decoration: none;
 }
 
-/* =========================================================
-     9. Inspection specifics
-     ========================================================= */
+/* 9. Inspection specifics */
 
 .inspection-create-page {
   width: 100%;
@@ -3137,8 +3106,7 @@ table.data .row-actions .btn {
   font-weight: 600;
 }
 
-/* signature modal (class based so it also works on pages where the
-   modal id is prefixed, e.g. anggota-sign-modal) */
+/* Signature modal classes work with prefixed ids like anggota-sign-modal. */
 .kepala-sign-modal {
   position: fixed;
   inset: 0;
@@ -3396,9 +3364,7 @@ table.data .row-actions .btn {
   display: none;
 }
 
-/* =========================================================
-   10. Motion
-   ========================================================= */
+/* 10. Motion */
 
 @keyframes overlay-in {
   from {
@@ -3473,9 +3439,7 @@ table.data .row-actions .btn {
   animation-delay: 0.16s;
 }
 
-/* =========================================================
-   11. Responsive
-   ========================================================= */
+/* 11. Responsive */
 
 @media (min-width: 1280px) {
   .content {

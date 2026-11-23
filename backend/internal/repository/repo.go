@@ -551,6 +551,30 @@ func (r *Repo) GetKetuaName() (string, error) {
 	return name, err
 }
 
+// Returns the KEPALA assigned to the room so reports name the room owner.
+func (r *Repo) GetRoomKepala(roomID int64) (*model.User, error) {
+	return r.scanUser(r.DB.QueryRow(
+		userSelect+`
+			JOIN user_assigned_rooms uar ON uar.user_id = u.id
+			WHERE uar.room_id = $1 AND u.status = 'ACTIVE' AND r.name = 'KEPALA'
+			ORDER BY u.id
+			LIMIT 1`,
+		roomID,
+	))
+}
+
+// Returns the ANGGOTA (IPCLN) assigned to a room, if any.
+func (r *Repo) GetRoomAnggota(roomID int64) (*model.User, error) {
+	return r.scanUser(r.DB.QueryRow(
+		userSelect+`
+			JOIN user_assigned_rooms uar ON uar.user_id = u.id
+			WHERE uar.room_id = $1 AND u.status = 'ACTIVE' AND r.name = 'ANGGOTA'
+			ORDER BY u.id
+			LIMIT 1`,
+		roomID,
+	))
+}
+
 func (r *Repo) GetKetua() (string, string, error) {
 	var name, nip string
 

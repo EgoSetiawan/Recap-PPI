@@ -20,9 +20,9 @@ function statIcon(path) {
 
 function inspectionStatusBadge(status) {
   const map = {
-    OPEN: {
+    DRAFT: {
       kind: "warn",
-      label: "Open",
+      label: "Draft",
     },
     SUBMITTED: {
       kind: "info",
@@ -95,7 +95,7 @@ async function main() {
         hint: monthLabel,
       },
       {
-        label: "Open",
+        label: "Draft",
         value: totals.open,
         tone: "warning",
         icon: STAT_ICONS.open,
@@ -204,7 +204,7 @@ async function main() {
     const statusSummary = [
       {
         key: "open",
-        label: "Open",
+        label: "Draft",
         color: "warn",
       },
       {

@@ -4,11 +4,7 @@ import { normalizeRole } from "./utils/format.js";
 const TOKEN_KEY = "he_token";
 const USER_KEY = "he_user";
 
-/*
- * The API authorises by role (SUPER_ADMIN / KEPALA / ANGGOTA) and does
- * not expose a permission list, so the UI mirrors those capabilities
- * here. An explicit `permissions` array from the API still wins.
- */
+// The API authorizes by role, not permission lists; explicit permissions still win.
 const ROLE_PERMISSIONS = {
   SUPER_ADMIN: [
     "rooms.manage",
@@ -72,10 +68,7 @@ export function hasAnyPermission(...perms) {
   return perms.some((p) => hasPermission(p));
 }
 
-/**
- * @param {string} path - e.g. '/rooms' or 'rooms'
- * @param {RequestInit & { query?: Record<string, string|number|undefined|null> }} [options]
- */
+/** Fetch an API path with optional query params and RequestInit. */
 export async function api(path, options = {}) {
   const base = (window.APP_CONFIG || APP_CONFIG).API_BASE_URL.replace(/\/$/, "");
   let url = `${base}/${String(path).replace(/^\//, "")}`;

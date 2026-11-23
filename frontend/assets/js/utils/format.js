@@ -45,7 +45,7 @@ export function conditionBadge(condition) {
 
 export function statusBadge(status) {
   const map = {
-    OPEN: { kind: "warn", label: "Open" },
+    DRAFT: { kind: "warn", label: "Draft" },
     SUBMITTED: { kind: "info", label: "Menunggu Review" },
     APPROVED: { kind: "good", label: "Disetujui" },
     REJECTED: { kind: "danger", label: "Ditolak" },
@@ -103,10 +103,7 @@ export function roleLabel(role) {
   return map[normalizeRole(role)] || role || "";
 }
 
-/**
- * Normalizes the role names used by the API, the seeds and older
- * UI code ("KEPALA", "ATASAN_PPI", "KEPALA_RUANGAN", …).
- */
+/** Normalizes legacy role names such as ATASAN_PPI to KEPALA. */
 export function normalizeRole(role) {
   const value = String(role ?? "")
     .trim()

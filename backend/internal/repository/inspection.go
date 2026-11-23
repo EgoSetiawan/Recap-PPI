@@ -191,7 +191,7 @@ func (r *Repo) CreateInspectionFull(ins *model.Inspection) error {
 	defer tx.Rollback()
 
 	if ins.Status == "" {
-		ins.Status = "OPEN"
+		ins.Status = "DRAFT"
 	}
 
 	month := time.Date(
@@ -471,8 +471,8 @@ func (r *Repo) ReplaceChecklistForDate(inspectionID int64, answerDate time.Time,
 		return err
 	}
 
-	if strings.ToUpper(strings.TrimSpace(status)) != "OPEN" {
-		return errors.New("checklist can only be edited while inspection is OPEN")
+	if strings.ToUpper(strings.TrimSpace(status)) != "DRAFT" {
+		return errors.New("checklist can only be edited while inspection is DRAFT")
 	}
 
 	if answerDate.Year() != inspectionMonth.Year() ||
@@ -619,7 +619,7 @@ func (r *Repo) UpdateInspectionNotes(inspectionID int64, notes string) error {
 		 SET notes = $1,
 		     updated_at = NOW()
 		 WHERE id = $2
-		   AND status = 'OPEN'`,
+		   AND status = 'DRAFT'`,
 		strings.TrimSpace(notes),
 		inspectionID,
 	)
@@ -632,7 +632,7 @@ func (r *Repo) UpdateInspectionNotes(inspectionID int64, notes string) error {
 		return err
 	}
 	if rows == 0 {
-		return errors.New("inspection not found or is not OPEN")
+		return errors.New("inspection not found or is not DRAFT")
 	}
 
 	return nil
@@ -668,7 +668,7 @@ func (r *Repo) SubmitInspection(actor *model.User, sign *model.Signature) error 
 			updated_at = NOW()
 		WHERE i.id = $1
 		  AND i.inspector_id = $2
-		  AND i.status = 'OPEN'
+		  AND i.status = 'DRAFT'
 		  AND i.is_deleted = FALSE
 		  AND EXISTS (
 			  SELECT 1
@@ -692,7 +692,7 @@ func (r *Repo) SubmitInspection(actor *model.User, sign *model.Signature) error 
 
 	if rowsAffected != 1 {
 		return errors.New(
-			"inspection is not OPEN, inspector is unauthorized, or saved Anggota signature is missing",
+			"inspection is not DRAFT, inspector is unauthorized, or saved Anggota signature is missing",
 		)
 	}
 

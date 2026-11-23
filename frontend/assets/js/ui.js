@@ -1,11 +1,4 @@
-/*
- * Class strings for dynamically rendered UI.
- *
- * Presentation lives in CSS (theme.css / app.css), so these
- * constants only carry semantic class names. That keeps the
- * runtime markup readable and avoids utility classes fighting
- * the design system.
- */
+// Semantic class names for dynamically rendered UI; presentation lives in CSS.
 
 export const btn = "btn";
 

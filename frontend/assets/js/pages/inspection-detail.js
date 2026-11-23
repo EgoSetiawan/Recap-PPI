@@ -34,9 +34,7 @@ const STEP_CHECK_ICON = `
   </svg>
 `;
 
-// ==================================================
 // SIGNATURE DISPLAY
-// ==================================================
 
 function sigBlock(title, sig) {
   if (!sig) {
@@ -84,9 +82,7 @@ function sigBlock(title, sig) {
   `;
 }
 
-// ==================================================
 // REUSABLE SIGNATURE MODAL
-// ==================================================
 
 function mountSignatureModal({
   prefix,
@@ -245,9 +241,7 @@ function mountSignatureModal({
   });
 }
 
-// ==================================================
-// ERROR
-// ==================================================
+// Error.
 
 function showError(message) {
   const actions = document.getElementById("header-actions");
@@ -272,9 +266,7 @@ function showError(message) {
   }
 }
 
-// ==================================================
 // DAILY CHECKLIST AND MONTHLY CALENDAR
-// ==================================================
 
 async function setupDailyChecklist(inspection, options = {}) {
   const dateInput = document.getElementById("answer-date");
@@ -283,13 +275,13 @@ async function setupDailyChecklist(inspection, options = {}) {
   const progress = document.getElementById("day-progress");
   const saveButton = document.getElementById("btn-save-day");
 
-  const isOpen =
+  const isDraft =
     String(inspection.status || "")
       .trim()
-      .toUpperCase() === "OPEN";
+      .toUpperCase() === "DRAFT";
 
-  // Only the assigned inspector or Admin can edit an OPEN draft.
-  const isEditable = isOpen && options.canEdit === true;
+  // Only the assigned inspector or Admin can edit a DRAFT inspection.
+  const isEditable = isDraft && options.canEdit === true;
 
   if (!dateInput || !dateList || !checklistContainer || !progress) {
     throw new Error("Elemen pemeriksaan harian tidak ditemukan.");
@@ -329,13 +321,7 @@ async function setupDailyChecklist(inspection, options = {}) {
         ? inspection.checklist
         : [];
 
-  /*
-   * TEMPORARY DRAFTS
-   *
-   * Map key: YYYY-MM-DD
-   *
-   * Drafts stay in memory until saved or the page is closed.
-   */
+  // Drafts keyed by YYYY-MM-DD, kept in memory until saved.
   const draftDays = new Map();
 
   const getAnswerDate = (answer) => String(answer.answer_date || "").slice(0, 10);
@@ -406,10 +392,7 @@ async function setupDailyChecklist(inspection, options = {}) {
     };
   }
 
-  /*
-   * Capture what is currently visible.
-   * This updates an existing draft before changing dates.
-   */
+  // Capture visible values into the current draft before changing dates.
   function statusFieldValue(row) {
     const field = row.querySelector("[data-status]");
 
@@ -462,9 +445,7 @@ async function setupDailyChecklist(inspection, options = {}) {
     });
   }
 
-  // --------------------------------------------------
-  // RENDER THE CALENDAR
-  // --------------------------------------------------
+  // Render the calendar.
 
   function renderDateList() {
     const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
@@ -648,9 +629,7 @@ async function setupDailyChecklist(inspection, options = {}) {
     });
   }
 
-  // --------------------------------------------------
-  // RENDER CHECKLIST FOR THE SELECTED DAY
-  // --------------------------------------------------
+  // Render checklist for the selected day.
 
   function renderDay() {
     const selectedDate = dateInput.value;
@@ -761,9 +740,7 @@ async function setupDailyChecklist(inspection, options = {}) {
     }
   }
 
-  // --------------------------------------------------
-  // TRACK LOCAL CHANGES
-  // --------------------------------------------------
+  // Track local changes.
 
   if (isEditable) {
     checklistContainer.addEventListener("change", (event) => {
@@ -804,9 +781,7 @@ async function setupDailyChecklist(inspection, options = {}) {
     renderDay();
   });
 
-  // --------------------------------------------------
-  // SAVE ALL DRAFTS IN ONE API REQUEST
-  // --------------------------------------------------
+  // Save all drafts in one API request.
 
   async function saveAllDrafts() {
     captureVisibleDraft();
@@ -819,7 +794,7 @@ async function setupDailyChecklist(inspection, options = {}) {
     }
 
     if (!isEditable) {
-      toast("Hanya pemeriksaan berstatus OPEN yang dapat diedit.", "error");
+      toast("Hanya pemeriksaan berstatus DRAFT yang dapat diedit.", "error");
 
       return false;
     }
@@ -912,9 +887,7 @@ async function setupDailyChecklist(inspection, options = {}) {
   };
 }
 
-// ==================================================
 // MAIN INSPECTION DETAIL PAGE
-// ==================================================
 
 async function main() {
   const user = await requireAuth();
@@ -961,9 +934,7 @@ async function main() {
 
   const canManageInspection = hasPermission("inspections.manage");
 
-  // --------------------------------------------------
-  // ROLE AND SIGNATURE CHECKS
-  // --------------------------------------------------
+  // Role and signature checks.
 
   const currentRole = normalizeRole(user.role);
 
@@ -975,7 +946,7 @@ async function main() {
 
   const isAdmin = isAdminRole(currentRole);
 
-  const isOpenInspection = inspectionStatus === "OPEN";
+  const isDraftInspection = inspectionStatus === "DRAFT";
 
   const isSubmittedInspection = inspectionStatus === "SUBMITTED";
 
@@ -987,7 +958,7 @@ async function main() {
   const canDeleteInspection = canManageInspection && !isApprovedInspection;
 
   // Highlight the nav entry that matches the current inspection state.
-  const navTarget = isOpenInspection ? "open-inspection.html" : "latest.html";
+  const navTarget = isDraftInspection ? "open-inspection.html" : "latest.html";
 
   document.querySelectorAll(".sidebar a.nav-link").forEach((link) => {
     const active = link.getAttribute("href") === navTarget;
@@ -1018,12 +989,12 @@ async function main() {
 
   // Anggota signs the petugas slot.
   const canSignAsAnggota =
-    (isOpenInspection || isSubmittedInspection) &&
+    (isDraftInspection || isSubmittedInspection) &&
     isAnggotaRole(currentRole) &&
     !hasAnggotaSignature;
 
   // Only the assigned inspector can submit.
-  const canSubmitForReview = isOpenInspection && isAssignedInspector && hasAnggotaSignature;
+  const canSubmitForReview = isDraftInspection && isAssignedInspector && hasAnggotaSignature;
 
   // Kepala signs once after submit.
   const canSignAsKepalaRuangan =
@@ -1033,7 +1004,7 @@ async function main() {
   const canApproveInspection =
     (isKepala || isAdmin) && isSubmittedInspection && hasAnggotaSignature && hasKepalaSignature;
 
-  const canEditChecklist = isOpenInspection && (isAssignedInspector || isAdmin || isKepala);
+  const canEditChecklist = isDraftInspection && (isAssignedInspector || isAdmin || isKepala);
 
   // Workflow narrative shown next to the action buttons.
   let workflowNote = "";
@@ -1042,11 +1013,11 @@ async function main() {
     workflowNote = "Pemeriksaan ini ditolak. Hubungi kepala PPI untuk tindak lanjut.";
   } else if (isApprovedInspection) {
     workflowNote = "Pemeriksaan sudah disetujui dan menjadi arsip final.";
-  } else if (isOpenInspection && !hasAnggotaSignature) {
+  } else if (isDraftInspection && !hasAnggotaSignature) {
     workflowNote = isAssignedInspector
       ? "Tanda tangani pemeriksaan sebagai petugas pemeriksa, lalu kirim untuk direview kepala ruangan."
       : "Menunggu tanda tangan petugas pemeriksa sebelum dapat dikirim.";
-  } else if (isOpenInspection) {
+  } else if (isDraftInspection) {
     workflowNote = isAssignedInspector
       ? "Tanda tangan petugas sudah tersimpan. Kirim pemeriksaan agar kepala ruangan dapat menandatangani dan menyetujui."
       : "Petugas sudah menandatangani. Menunggu pemeriksaan dikirim untuk review.";
@@ -1087,18 +1058,27 @@ async function main() {
         ? `<span class="badge badge-info">Menunggu Review</span>`
         : `<span class="badge badge-warn">Draft</span>`;
 
-  // --------------------------------------------------
-  // HEADER BUTTONS
-  // --------------------------------------------------
+  // Header buttons.
+
+  // Drafts cannot be exported; they get the in-app report preview instead.
+  const reportAction = isDraftInspection
+    ? `<a
+        class="${btnSecondary}"
+        id="btn-preview"
+        href="./inspection-preview.html?id=${insp.id}"
+      >
+        Pratinjau Laporan
+      </a>`
+    : `<button
+        type="button"
+        class="${btnSecondary}"
+        id="btn-pdf"
+      >
+        Cetak PDF
+      </button>`;
 
   document.getElementById("header-actions").innerHTML = `
-    <button
-      type="button"
-      class="${btnSecondary}"
-      id="btn-pdf"
-    >
-      Cetak PDF
-    </button>
+    ${reportAction}
 
     ${
       canDeleteInspection
@@ -1115,7 +1095,7 @@ async function main() {
     }
   `;
 
-  document.getElementById("btn-pdf").addEventListener("click", async () => {
+  document.getElementById("btn-pdf")?.addEventListener("click", async () => {
     try {
       await downloadInspectionPdf(insp.id);
     } catch (error) {
@@ -1123,9 +1103,7 @@ async function main() {
     }
   });
 
-  // --------------------------------------------------
-  // DELETE INSPECTION
-  // --------------------------------------------------
+  // Delete inspection.
 
   const btnDelete = document.getElementById("btn-delete");
 
@@ -1159,15 +1137,11 @@ async function main() {
     });
   }
 
-  // --------------------------------------------------
-  // MONTH NAME
-  // --------------------------------------------------
+  // Month name.
 
   const monthName = formatMonth(insp.inspection_month);
 
-  // --------------------------------------------------
-  // INSPECTION DETAIL HTML
-  // --------------------------------------------------
+  // Inspection detail HTML.
 
   document.getElementById("detail-root").innerHTML = `
     ${
@@ -1230,9 +1204,9 @@ async function main() {
       <div class="${sectionBody}">
         <p class="page-meta">
           ${
-            isOpenInspection
+            isDraftInspection
               ? "Pilih tanggal, edit checklist, kemudian simpan semua perubahan."
-              : "Pemeriksaan ini hanya dapat dilihat karena statusnya bukan OPEN."
+              : "Pemeriksaan ini hanya dapat dilihat karena statusnya bukan DRAFT."
           }
         </p>
 
@@ -1381,15 +1355,11 @@ async function main() {
     </div>
   `;
 
-  // --------------------------------------------------
-  // INITIALIZE DAILY CHECKLIST
-  // --------------------------------------------------
+  // Initialize daily checklist.
 
   await setupDailyChecklist(insp, { canEdit: canEditChecklist });
 
-  // --------------------------------------------------
-  // EDIT MONTHLY NOTES
-  // --------------------------------------------------
+  // Edit monthly notes.
 
   const notesInput = document.getElementById("inspection-notes");
   const saveNotesButton = document.getElementById("btn-save-notes");
@@ -1418,9 +1388,7 @@ async function main() {
     });
   }
 
-  // ==================================================
   // ANGGOTA SIGNATURE MODAL
-  // ==================================================
 
   if (canSignAsAnggota) {
     mountSignatureModal({
@@ -1434,9 +1402,7 @@ async function main() {
     });
   }
 
-  // ==================================================
   // KEPALA RUANGAN SIGNATURE MODAL
-  // ==================================================
 
   if (canSignAsKepalaRuangan) {
     mountSignatureModal({
@@ -1450,9 +1416,7 @@ async function main() {
     });
   }
 
-  // ==================================================
-  // SUBMIT FOR REVIEW (petugas)
-  // ==================================================
+  // Submit for review (petugas).
 
   const submitButton = document.getElementById("btn-submit-review");
 
@@ -1478,9 +1442,7 @@ async function main() {
     }
   });
 
-  // ==================================================
-  // APPROVE (kepala ruangan / admin)
-  // ==================================================
+  // Approve (kepala ruangan / admin).
 
   const approveButton = document.getElementById("btn-approve");
 
@@ -1507,9 +1469,7 @@ async function main() {
   });
 }
 
-// ==================================================
 // START
-// ==================================================
 
 main().catch((error) => {
   console.error("Inspection detail error:", error);

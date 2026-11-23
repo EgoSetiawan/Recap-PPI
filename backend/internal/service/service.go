@@ -139,7 +139,7 @@ func (s *Service) Me(u *model.User) *model.User {
 	return publicUser(u)
 }
 
-//--- OPS ---//
+// --- OPS ---
 
 func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 	if actor == nil {
@@ -191,7 +191,7 @@ func (s *Service) Dashboard(actor *model.User) (map[string]interface{}, error) {
 	for _, ins := range inspections {
 		// Count statuses across all months.
 		switch ins.Status {
-		case StatusOpen:
+		case StatusDraft:
 			open++
 		case StatusSubmitted:
 			submitted++

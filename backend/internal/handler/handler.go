@@ -102,11 +102,11 @@ func (h *Handler) ListInspections(c *gin.Context) {
 	h.listInspections(c, "", true)
 }
 
-func (h *Handler) ListOpenInspections(c *gin.Context) {
-	h.listInspections(c, "OPEN", false)
+func (h *Handler) ListDraftInspections(c *gin.Context) {
+	h.listInspections(c, "DRAFT", false)
 }
 
-func (h *Handler) listInspections(c *gin.Context, status string, excludeOpen bool) {
+func (h *Handler) listInspections(c *gin.Context, status string, excludeDraft bool) {
 	var roomID *int64
 
 	if v := c.Query("room_id"); v != "" {
@@ -150,13 +150,13 @@ func (h *Handler) listInspections(c *gin.Context, status string, excludeOpen boo
 		return
 	}
 
-	if excludeOpen {
+	if excludeDraft {
 		filtered := make([]model.Inspection, 0, len(list))
 
 		for _, inspection := range list {
 			if strings.EqualFold(
 				strings.TrimSpace(inspection.Status),
-				"OPEN",
+				"DRAFT",
 			) {
 				continue
 			}
@@ -207,6 +207,29 @@ func (h *Handler) CreatePDFReport(c *gin.Context) {
 		"application/pdf",
 		pdfBytes,
 	)
+}
+
+func (h *Handler) GetInspectionPreview(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.FailCode(
+			c,
+			"VALIDATION_ERROR",
+			"ID pemeriksaan tidak valid",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	preview, err := h.Svc.GetInspectionPreview(
+		middleware.CurrentUser(c), id,
+	)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	response.OK(c, preview, "Inspection preview retrieved")
 }
 
 func (h *Handler) DeleteInspection(c *gin.Context) {

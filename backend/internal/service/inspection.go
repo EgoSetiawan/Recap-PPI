@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	StatusOpen      = "OPEN"
+	StatusDraft     = "DRAFT"
 	StatusSubmitted = "SUBMITTED"
 	StatusApproved  = "APPROVED"
 	StatusRejected  = "REJECTED"
@@ -47,7 +47,7 @@ type CreateInspectionInput struct {
 	InspectionMonth time.Time                 `json:"inspection_month" binding:"required"`
 	Notes           string                    `json:"notes"`
 	Days            []SaveInspectionDateInput `json:"days" binding:"required,min=1"`
-	// optional
+	// Optional signature payload.
 	Signature *SignaturePayload `json:"signature" binding:"required"`
 }
 
@@ -416,8 +416,8 @@ func (s *Service) AddAnggotaSignature(actor *model.User, imageDataURL string, id
 
 	status := strings.ToUpper(strings.TrimSpace(ins.Status))
 
-	// OPEN and SUBMITTED inspections can be signed.
-	if status != StatusOpen && status != StatusSubmitted {
+	// DRAFT and SUBMITTED inspections can be signed.
+	if status != StatusDraft && status != StatusSubmitted {
 		return nil, response.Err(
 			"INVALID_STATUS",
 			"Tanda tangan hanya dapat disimpan selama pemeriksaan belum disetujui",
@@ -541,7 +541,7 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		return nil, err
 	}
 
-	//added for optional
+	// Signatures are optional at creation.
 	signatures := []model.Signature{}
 
 	if in.Signature != nil {
@@ -576,7 +576,7 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		InspectorID:     actor.ID,
 		InspectionMonth: month,
 		Notes:           strings.TrimSpace(in.Notes),
-		Status:          StatusOpen,
+		Status:          StatusDraft,
 		Checklist:       checklist,
 		Signatures:      signatures,
 	}
@@ -656,7 +656,7 @@ func (s *Service) SaveChecklist(actor *model.User, inspectionID int64, in SaveCh
 		return nil, err
 	}
 
-	if ins.Status != StatusOpen {
+	if ins.Status != StatusDraft {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
 			"Pemeriksaan sudah tidak dapat diubah",
@@ -866,8 +866,8 @@ func (s *Service) ReplaceChecklistForDate(actor *model.User, inspectionID int64,
 			http.StatusUnprocessableEntity,
 		)
 	}
-	// Only OPEN inspections can be edited.
-	if strings.ToUpper(strings.TrimSpace(ins.Status)) != "OPEN" {
+	// Only DRAFT inspections can be edited.
+	if strings.ToUpper(strings.TrimSpace(ins.Status)) != "DRAFT" {
 		return response.Err(
 			"INSPECTION_LOCKED",
 			"Only open inspections can be edited",
@@ -999,10 +999,10 @@ func (s *Service) SaveInspectionDate(actor *model.User, inspectionID int64, in m
 		)
 	}
 
-	if strings.ToUpper(strings.TrimSpace(inspection.Status)) != "OPEN" {
+	if strings.ToUpper(strings.TrimSpace(inspection.Status)) != "DRAFT" {
 		return response.Err(
 			"INSPECTION_LOCKED",
-			"Checklist hanya dapat diubah saat pemeriksaan berstatus OPEN",
+			"Checklist hanya dapat diubah saat pemeriksaan berstatus DRAFT",
 			http.StatusConflict,
 		)
 	}
@@ -1141,10 +1141,10 @@ func (s *Service) SaveInspectionDates(actor *model.User, inspectionID int64, in 
 		)
 	}
 
-	if strings.ToUpper(strings.TrimSpace(inspection.Status)) != StatusOpen {
+	if strings.ToUpper(strings.TrimSpace(inspection.Status)) != StatusDraft {
 		return response.Err(
 			"INSPECTION_LOCKED",
-			"Checklist hanya dapat diubah saat pemeriksaan berstatus OPEN",
+			"Checklist hanya dapat diubah saat pemeriksaan berstatus DRAFT",
 			http.StatusConflict,
 		)
 	}
@@ -1245,10 +1245,10 @@ func (s *Service) UpdateInspectionNotes(actor *model.User, inspectionID int64, n
 		)
 	}
 
-	if strings.ToUpper(strings.TrimSpace(inspection.Status)) != "OPEN" {
+	if strings.ToUpper(strings.TrimSpace(inspection.Status)) != "DRAFT" {
 		return response.Err(
 			"INSPECTION_LOCKED",
-			"Catatan hanya dapat diubah saat pemeriksaan berstatus OPEN",
+			"Catatan hanya dapat diubah saat pemeriksaan berstatus DRAFT",
 			http.StatusConflict,
 		)
 	}
@@ -1300,11 +1300,11 @@ func (s *Service) SubmitInspections(actor *model.User, id int64) (*model.Inspect
 			http.StatusForbidden,
 		)
 	}
-	// Only OPEN inspections can be submitted.
-	if ins.Status != StatusOpen {
+	// Only DRAFT inspections can be submitted.
+	if ins.Status != StatusDraft {
 		return nil, response.Err(
 			"INVALID_STATUS",
-			"Pemeriksaan hanya dapat dikirim ketika berstatus OPEN",
+			"Pemeriksaan hanya dapat dikirim ketika berstatus DRAFT",
 			http.StatusConflict,
 		)
 	}

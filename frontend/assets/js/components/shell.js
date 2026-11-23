@@ -14,10 +14,7 @@ import {
   toastClass,
 } from "../ui.js";
 
-/*
- * Inline icon set (24x24, stroke based) so the shell stays
- * dependency free while still looking crisp on every screen.
- */
+// Inline 24x24 stroke icons so the shell stays dependency free.
 const ICONS = {
   brand:
     '<path d="M12 3 4 6v6c0 4.4 3.4 8.4 8 9 4.6-.6 8-4.6 8-9V6l-8-3z"/><path d="M12 9v6M9 12h6"/>',
@@ -126,9 +123,7 @@ const NAV_SECTIONS = [
   },
 ];
 
-/*
- * Toast
- */
+// Toast.
 export function toast(message, type = "info") {
   let box = document.querySelector(".toast-container");
 
@@ -150,9 +145,7 @@ export function toast(message, type = "info") {
   }, 3500);
 }
 
-/*
- * Confirmation dialog
- */
+// Confirmation dialog.
 export function confirmDialog(message) {
   return new Promise((resolve) => {
     const backdrop = document.createElement("div");
@@ -209,9 +202,7 @@ export function confirmDialog(message) {
   });
 }
 
-/*
- * Generic modal
- */
+// Generic modal.
 export function openModal({ title, bodyHtml, onSubmit, submitLabel = "Simpan" }) {
   const backdrop = document.createElement("div");
 
@@ -294,9 +285,7 @@ export function openModal({ title, bodyHtml, onSubmit, submitLabel = "Simpan" })
   return backdrop;
 }
 
-/*
- * Build navigation based on role.
- */
+// Build navigation based on role.
 function buildNav(activePage) {
   const user = getStoredUser();
   const role = user?.role;
@@ -359,9 +348,7 @@ function buildNav(activePage) {
   }).join("");
 }
 
-/*
- * Mobile navigation drawer
- */
+// Mobile navigation drawer.
 function bindNavDrawer(shell) {
   const sidebar = shell.querySelector(".sidebar");
 
@@ -430,9 +417,7 @@ function bindNavDrawer(shell) {
   }
 }
 
-/*
- * Breadcrumb
- */
+// Breadcrumb.
 function renderBreadcrumb(options = {}) {
   const parts = [];
 
@@ -459,9 +444,7 @@ function renderBreadcrumb(options = {}) {
   return parts.join("");
 }
 
-/*
- * Mount application shell
- */
+// Mount application shell.
 export async function mountShell(activePage, options = {}) {
   const user = getStoredUser();
 
@@ -669,9 +652,7 @@ export async function mountShell(activePage, options = {}) {
 
   bindNavDrawer(shell);
 
-  /*
-   * Flash message left by the previous page (e.g. login -> dashboard)
-   */
+  // Flash message left by the previous page (e.g. login -> dashboard).
   const flash = sessionStorage.getItem("flash_toast");
 
   if (flash) {
@@ -679,9 +660,7 @@ export async function mountShell(activePage, options = {}) {
     toast(flash, "success");
   }
 
-  /*
-   * Logout + user menu
-   */
+  // Logout and user menu.
   document.getElementById("btn-logout")?.addEventListener("click", () => logout());
 
   const userMenuButton = document.getElementById("btn-user-menu");
@@ -709,9 +688,7 @@ export async function mountShell(activePage, options = {}) {
 
   document.getElementById("btn-user-logout")?.addEventListener("click", () => logout());
 
-  /*
-   * Global room search
-   */
+  // Global room search.
   document.getElementById("global-search-form")?.addEventListener("submit", (e) => {
     e.preventDefault();
 

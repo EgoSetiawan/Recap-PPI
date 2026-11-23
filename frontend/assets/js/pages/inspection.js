@@ -26,9 +26,7 @@ const draftDays = new Map();
 let selectedDate = "";
 let monthKey = "";
 
-// =========================================================
 // UTILITIES
-// =========================================================
 
 function currentMonthValue() {
   const now = new Date();
@@ -87,7 +85,7 @@ function countCompleted(items) {
 }
 
 const INSPECTION_STATUS_LABELS = {
-  OPEN: "Draft",
+  DRAFT: "Draft",
   SUBMITTED: "Menunggu Review",
   APPROVED: "Disetujui",
   REJECTED: "Ditolak",
@@ -121,9 +119,7 @@ function openExistingInspection(room, month, inspection) {
   }, 900);
 }
 
-// =========================================================
 // PAGE
-// =========================================================
 
 function renderPage() {
   const root = document.getElementById("detail-root");
@@ -350,9 +346,7 @@ function renderPage() {
   });
 }
 
-// =========================================================
 // LOAD ROOMS
-// =========================================================
 
 async function loadRooms() {
   const response = await api("/rooms");
@@ -382,9 +376,7 @@ async function loadRooms() {
   }
 }
 
-// =========================================================
 // LOAD CHECKLIST DEFINITIONS
-// =========================================================
 
 async function loadChecklistForRoom() {
   const roomID = Number(document.getElementById("sel-room").value);
@@ -459,9 +451,7 @@ async function loadChecklistForRoom() {
   });
 }
 
-// =========================================================
 // DATES AND DRAFTS
-// =========================================================
 
 function getDaysInMonth() {
   const [year, month] = monthKey.split("-").map(Number);
@@ -525,9 +515,7 @@ function getDraftItems(date) {
   }));
 }
 
-// =========================================================
 // MONTHLY CALENDAR
-// =========================================================
 
 function renderCreateCalendar() {
   const [year, month] = monthKey.split("-").map(Number);
@@ -686,9 +674,7 @@ function renderCreateCalendar() {
   });
 }
 
-// =========================================================
 // DAILY CHECKLIST
-// =========================================================
 
 function renderCreateDay() {
   const items = getDraftItems(selectedDate);
@@ -789,9 +775,7 @@ function renderCreateDay() {
   checklist.onchange = checklist.oninput;
 }
 
-// =========================================================
 // SIGNATURE MODAL
-// =========================================================
 
 function setupSignatureModal() {
   const modal = document.getElementById("signature-modal");
@@ -880,9 +864,7 @@ function setupSignatureModal() {
   });
 }
 
-// =========================================================
 // CREATE INSPECTION
-// =========================================================
 
 function setupCreateInspection() {
   document.getElementById("btn-create-inspection").addEventListener("click", async (event) => {
@@ -969,9 +951,7 @@ function setupCreateInspection() {
   });
 }
 
-// =========================================================
 // MAIN
-// =========================================================
 
 async function main() {
   const user = await requireAuth();
