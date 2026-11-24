@@ -13,6 +13,40 @@ type reportSigners struct {
 	KepalaNip   string
 	AnggotaName string
 }
+// Petugas signature is the who in charge that room
+func (s *Service) trustedReportSignatures(ins *model.Inspection) (*model.Signature, *model.Signature, error) {
+	kepala := findSignatureByRole(ins.Signatures, "KEPALA")
+	anggota := findSignatureByRole(ins.Signatures, "ANGGOTA")
+
+	trustedKepala, err := s.trustSignatureForRole(kepala, auth.RoleKepala)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	trustedAnggota, err := s.trustSignatureForRole(anggota, auth.RoleAnggota)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return trustedKepala, trustedAnggota, nil
+}
+
+// Confirms that the signature's signer currently holds role. Signatures without a signer link (deleted users or legacy rows) are kept as they are.
+func (s *Service) trustSignatureForRole(sig *model.Signature, role string) (*model.Signature, error) {
+	if sig == nil || sig.SignerUserID == nil {
+		return sig, nil
+	}
+
+	signer, err := s.Repo.GetByID(*sig.SignerUserID)
+	if err != nil {
+		return nil, err
+	}
+	if signer == nil || auth.NormalizeRole(signer.Role) != auth.NormalizeRole(role) {
+		return nil, nil
+	}
+
+	return sig, nil
+}
 
 // Resolves report signers from the room assignments, preferring recorded signatures.
 func (s *Service) resolveReportSigners(

@@ -47,8 +47,8 @@ type CreateInspectionInput struct {
 	InspectionMonth time.Time                 `json:"inspection_month" binding:"required"`
 	Notes           string                    `json:"notes"`
 	Days            []SaveInspectionDateInput `json:"days" binding:"required,min=1"`
-	// Optional signature payload.
-	Signature *SignaturePayload `json:"signature" binding:"required"`
+
+	Signature *SignaturePayload `json:"signature"`
 }
 
 type SubmitInspectionInput struct {
@@ -464,6 +464,31 @@ func (s *Service) AddAnggotaSignature(actor *model.User, imageDataURL string, id
 	return sig, nil
 }
 
+// even if kepala or admin sign still inspection made by anggota that assign that rooms
+func resolveCreationInspector(actor *model.User, roomAnggota *model.User) (int64, error) {
+	if actor == nil {
+		return 0, response.Err(
+			"UNAUTHORIZED",
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
+	}
+
+	if auth.IsAnggota(actor.Role) {
+		return actor.ID, nil
+	}
+
+	if roomAnggota == nil {
+		return 0, response.Err(
+			"VALIDATION_ERROR",
+			"Ruangan ini belum memiliki Anggota PPI yang ditugaskan sehingga pemeriksaan tidak dapat dibuat",
+			http.StatusUnprocessableEntity,
+		)
+	}
+
+	return roomAnggota.ID, nil
+}
+
 func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) (*model.Inspection, error) {
 	if actor == nil {
 		return nil, response.Err(
@@ -514,6 +539,16 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		return nil, err
 	}
 
+	roomAnggota, err := s.Repo.GetRoomAnggota(room.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	inspectorID, err := resolveCreationInspector(actor, roomAnggota)
+	if err != nil {
+		return nil, err
+	}
+
 	month := time.Date(
 		in.InspectionMonth.Year(),
 		in.InspectionMonth.Month(),
@@ -541,10 +576,18 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		return nil, err
 	}
 
-	// Signatures are optional at creation.
+	// If kepala create inspections still require signatures from assign anggota
 	signatures := []model.Signature{}
 
-	if in.Signature != nil {
+	if inspectorID == actor.ID {
+		if in.Signature == nil {
+			return nil, response.Err(
+				"VALIDATION_ERROR",
+				"Tanda tangan petugas wajib diisi",
+				http.StatusUnprocessableEntity,
+			)
+		}
+
 		imageDataURL := strings.TrimSpace(in.Signature.ImageDataURL)
 
 		if !validSignatureImage(imageDataURL) {
@@ -573,7 +616,7 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 
 	ins := &model.Inspection{
 		RoomID:          room.ID,
-		InspectorID:     actor.ID,
+		InspectorID:     inspectorID,
 		InspectionMonth: month,
 		Notes:           strings.TrimSpace(in.Notes),
 		Status:          StatusDraft,

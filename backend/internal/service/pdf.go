@@ -236,8 +236,10 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		text.NewCol(18, "", props.Text{Size: 1}),
 	)
 	// SIGNATURE
-	kepalaSignature := findSignatureByRole(ins.Signatures, "KEPALA")
-	anggotaSignature := findSignatureByRole(ins.Signatures, "ANGGOTA")
+	kepalaSignature, anggotaSignature, err := s.trustedReportSignatures(ins)
+	if err != nil {
+		return nil, "", err
+	}
 
 	signers, err := s.resolveReportSigners(ins, kepalaSignature, anggotaSignature)
 	if err != nil {
@@ -245,9 +247,6 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 	}
 	ketuaDisplayName, ketuaDisplayNip := signers.KepalaName, signers.KepalaNip
 	anggotaDisplayName := signers.AnggotaName
-	if anggotaDisplayName == "" {
-		anggotaDisplayName = actor.Name
-	}
 
 	m.AddRow(
 		5,

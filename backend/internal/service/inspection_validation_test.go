@@ -6,8 +6,81 @@ import (
 	"testing"
 	"time"
 
+	"PPI/internal/model"
+	"PPI/internal/response"
+
 	"github.com/jackc/pgx/v5/pgconn"
 )
+
+func TestResolveCreationInspector(t *testing.T) {
+	anggota := &model.User{ID: 10, Name: "Anggota", Role: "ANGGOTA"}
+	kepala := &model.User{ID: 1, Name: "Kepala", Role: "KEPALA"}
+	admin := &model.User{ID: 2, Name: "Admin", Role: "SUPER_ADMIN"}
+	roomAnggota := &model.User{ID: 20, Name: "Petugas Ruangan", Role: "ANGGOTA"}
+
+	cases := []struct {
+		name        string
+		actor       *model.User
+		roomAnggota *model.User
+		wantID      int64
+		wantCode    string
+	}{
+		{
+			name:        "anggota keeps ownership",
+			actor:       anggota,
+			roomAnggota: roomAnggota,
+			wantID:      10,
+		},
+		{
+			name:        "kepala defers to the room anggota",
+			actor:       kepala,
+			roomAnggota: roomAnggota,
+			wantID:      20,
+		},
+		{
+			name:        "admin defers to the room anggota",
+			actor:       admin,
+			roomAnggota: roomAnggota,
+			wantID:      20,
+		},
+		{
+			name:        "kepala without an assigned room anggota",
+			actor:       kepala,
+			roomAnggota: nil,
+			wantCode:    "VALIDATION_ERROR",
+		},
+		{
+			name:        "missing actor",
+			actor:       nil,
+			roomAnggota: roomAnggota,
+			wantCode:    "UNAUTHORIZED",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := resolveCreationInspector(tc.actor, tc.roomAnggota)
+
+			if tc.wantCode != "" {
+				if err == nil {
+					t.Fatalf("expected error code %q, got nil", tc.wantCode)
+				}
+				appErr, ok := err.(*response.AppError)
+				if !ok || appErr.Code != tc.wantCode {
+					t.Fatalf("error = %v, want code %q", err, tc.wantCode)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.wantID {
+				t.Fatalf("resolveCreationInspector() = %d, want %d", got, tc.wantID)
+			}
+		})
+	}
+}
 
 func TestValidSignatureImage(t *testing.T) {
 	if !validSignatureImage(sampleSignatureDataURL(t)) {

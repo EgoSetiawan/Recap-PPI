@@ -1,6 +1,6 @@
 import { requireAuth, api, hasPermission } from "../api.js";
 import { mountShell, toast } from "../components/shell.js";
-import { escapeHtml } from "../utils/format.js";
+import { escapeHtml, isAnggotaRole } from "../utils/format.js";
 
 import {
   btn,
@@ -121,7 +121,7 @@ function openExistingInspection(room, month, inspection) {
 
 // PAGE
 
-function renderPage() {
+function renderPage(canSignAsAnggota) {
   const root = document.getElementById("detail-root");
 
   root.innerHTML = `
@@ -226,23 +226,35 @@ function renderPage() {
         </div>
 
         <div class="${sectionBody}">
-          <div class="inspection-form-group">
-            <label>Tanda Tangan Petugas</label>
+          ${
+            canSignAsAnggota
+              ? `
+                <div class="inspection-form-group">
+                  <label>Tanda Tangan Petugas</label>
 
-            <div class="signature-action">
-              <button
-                type="button"
-                class="${btnSecondary}"
-                id="btn-open-signature"
-              >
-                Tambah Tanda Tangan
-              </button>
+                  <div class="signature-action">
+                    <button
+                      type="button"
+                      class="${btnSecondary}"
+                      id="btn-open-signature"
+                    >
+                      Tambah Tanda Tangan
+                    </button>
 
-              <span id="signature-status" aria-live="polite">
-                Belum ada tanda tangan
-              </span>
-            </div>
-          </div>
+                    <span id="signature-status" aria-live="polite">
+                      Belum ada tanda tangan
+                    </span>
+                  </div>
+                </div>
+              `
+              : `
+                <p class="page-meta">
+                  Pemeriksaan ini dicatat atas nama Anggota PPI yang ditugaskan
+                  pada ruangan tersebut. Anggota itulah yang mengisi dan
+                  menandatangani pemeriksaan sebelum diajukan.
+                </p>
+              `
+          }
 
           <div class="inspection-form-actions">
             <button
@@ -866,7 +878,7 @@ function setupSignatureModal() {
 
 // CREATE INSPECTION
 
-function setupCreateInspection() {
+function setupCreateInspection(canSignAsAnggota) {
   document.getElementById("btn-create-inspection").addEventListener("click", async (event) => {
     const button = event.currentTarget;
 
@@ -877,7 +889,7 @@ function setupCreateInspection() {
       return;
     }
 
-    if (!signaturePayload) {
+    if (canSignAsAnggota && !signaturePayload) {
       toast("Tanda tangan petugas wajib diisi.", "error");
       return;
     }
@@ -900,9 +912,14 @@ function setupCreateInspection() {
       room_id: Number(selectedRoom.id),
       inspection_month: `${monthKey}-01T00:00:00Z`,
       notes: document.getElementById("insp-notes").value.trim(),
-      signature: signaturePayload,
       days,
     };
+
+    // The petugas signature belongs to the room's assigned Anggota. A
+    // kepala/admin creates the draft without signing it as the petugas.
+    if (canSignAsAnggota) {
+      payload.signature = signaturePayload;
+    }
 
     button.disabled = true;
     button.textContent = "Membuat pemeriksaan...";
@@ -971,11 +988,15 @@ async function main() {
   });
 
   if (!hasPermission("inspections.create")) {
-    showPageError("Hanya anggota PPI yang dapat membuat pemeriksaan.");
+    showPageError("Anda tidak memiliki akses untuk membuat pemeriksaan.");
     return;
   }
 
-  renderPage();
+  // Only an Anggota signs as the petugas; a kepala/admin starts the draft on
+  // behalf of the room's assigned Anggota.
+  const canSignAsAnggota = isAnggotaRole(user.role);
+
+  renderPage(canSignAsAnggota);
 
   try {
     await loadRooms();
@@ -1000,8 +1021,10 @@ async function main() {
     }
   });
 
-  setupSignatureModal();
-  setupCreateInspection();
+  if (canSignAsAnggota) {
+    setupSignatureModal();
+  }
+  setupCreateInspection(canSignAsAnggota);
 }
 
 main().catch((error) => {

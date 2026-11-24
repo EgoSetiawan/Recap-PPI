@@ -49,8 +49,10 @@ func (s *Service) GetInspectionPreview(actor *model.User, id int64) (*Inspection
 	}
 
 	// Labels follow the room's assignments and the collected signatures.
-	kepalaSignature := findSignatureByRole(ins.Signatures, "KEPALA")
-	anggotaSignature := findSignatureByRole(ins.Signatures, "ANGGOTA")
+	kepalaSignature, anggotaSignature, err := s.trustedReportSignatures(ins)
+	if err != nil {
+		return nil, err
+	}
 
 	signers, err := s.resolveReportSigners(ins, kepalaSignature, anggotaSignature)
 	if err != nil {
