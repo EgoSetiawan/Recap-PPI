@@ -28,10 +28,61 @@ let monthKey = "";
 
 // UTILITIES
 
-function currentMonthValue() {
-  const now = new Date();
+const MONTH_NAMES = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
 
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+// Future-facing inspection period: 2025 through 2031 (five years ahead).
+const YEAR_RANGE_START = 2025;
+const YEAR_RANGE_END = 2031;
+
+// Month/year dropdowns so the period is always picked, never typed.
+function monthOptions() {
+  const currentMonth = new Date().getMonth() + 1;
+
+  return MONTH_NAMES.map((name, index) => {
+    const value = String(index + 1).padStart(2, "0");
+    const selected = index + 1 === currentMonth ? " selected" : "";
+
+    return `<option value="${value}"${selected}>${name}</option>`;
+  }).join("");
+}
+
+function yearOptions() {
+  // Default to the current year, kept inside the selectable window.
+  const currentYear = new Date().getFullYear();
+  const selectedYear = Math.min(
+    Math.max(currentYear, YEAR_RANGE_START),
+    YEAR_RANGE_END,
+  );
+  const options = [];
+
+  for (let year = YEAR_RANGE_START; year <= YEAR_RANGE_END; year++) {
+    const selected = year === selectedYear ? " selected" : "";
+
+    options.push(`<option value="${year}"${selected}>${year}</option>`);
+  }
+
+  return options.join("");
+}
+
+// Combines the dropdowns into the YYYY-MM value the API expects.
+function selectedMonthValue() {
+  const month = document.getElementById("inspection-month").value;
+  const year = document.getElementById("inspection-year").value;
+
+  return `${year}-${month}`;
 }
 
 function unwrapArray(response) {
@@ -145,12 +196,23 @@ function renderPage(canSignAsAnggota) {
               Bulan Pemeriksaan *
             </label>
 
-            <input
-              type="month"
-              id="inspection-month"
-              value="${currentMonthValue()}"
-              required
-            />
+            <div class="inspection-month-fields">
+              <select
+                id="inspection-month"
+                required
+                aria-label="Bulan pemeriksaan"
+              >
+                ${monthOptions()}
+              </select>
+
+              <select
+                id="inspection-year"
+                required
+                aria-label="Tahun pemeriksaan"
+              >
+                ${yearOptions()}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -393,7 +455,7 @@ async function loadRooms() {
 async function loadChecklistForRoom() {
   const roomID = Number(document.getElementById("sel-room").value);
 
-  const month = document.getElementById("inspection-month").value;
+  const month = selectedMonthValue();
 
   if (!roomID) {
     toast("Pilih ruangan terlebih dahulu.", "error");

@@ -1,5 +1,5 @@
 import { logout, getStoredUser } from "../api.js";
-import { escapeHtml, roleLabel } from "../utils/format.js";
+import { displayName, escapeHtml, roleLabel } from "../utils/format.js";
 import {
   btn,
   btnSecondary,
@@ -447,6 +447,8 @@ function renderBreadcrumb(options = {}) {
 // Mount application shell.
 export async function mountShell(activePage, options = {}) {
   const user = getStoredUser();
+  // Show only the person's name; academic titles after the first comma are dropped.
+  const personName = displayName(user?.name);
 
   const shell = document.getElementById("app");
 
@@ -458,7 +460,7 @@ export async function mountShell(activePage, options = {}) {
 
   const crumb = renderBreadcrumb(options);
 
-  const initials = (user?.name || "U")
+  const initials = (personName || "U")
     .split(/\s+/)
     .map((part) => part[0])
     .join("")
@@ -524,7 +526,7 @@ export async function mountShell(activePage, options = {}) {
         <span class="foot-avatar">${escapeHtml(initials)}</span>
 
         <div class="foot-copy">
-          <strong>${escapeHtml(user?.name || "")}</strong>
+          <strong>${escapeHtml(personName)}</strong>
           <span class="foot-role">${escapeHtml(roleText)}</span>
         </div>
       </div>
@@ -601,12 +603,12 @@ export async function mountShell(activePage, options = {}) {
               aria-haspopup="menu"
               aria-expanded="false"
               aria-label="Menu pengguna"
-              title="${escapeHtml(user?.name || "")}"
+              title="${escapeHtml(personName)}"
             >
               <span class="avatar">${escapeHtml(initials)}</span>
 
               <span class="user-meta">
-                <strong>${escapeHtml(user?.name || "")}</strong>
+                <strong>${escapeHtml(personName)}</strong>
                 <span>${escapeHtml(roleText)}</span>
               </span>
 
@@ -619,7 +621,7 @@ export async function mountShell(activePage, options = {}) {
               role="menu"
             >
               <div class="user-menu-head">
-                <strong>${escapeHtml(user?.name || "")}</strong>
+                <strong>${escapeHtml(personName)}</strong>
                 <span>${escapeHtml(user?.email || "")}</span>
               </div>
 

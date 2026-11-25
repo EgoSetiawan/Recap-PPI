@@ -7,12 +7,13 @@ import (
 	"PPI/internal/model"
 )
 
-// Names printed on the monthly report; only the kepala carries a NIP.
+// Names printed on the monthly report; only the Kepala Komite IPCLN carries a NIP.
 type reportSigners struct {
 	KepalaName  string
 	KepalaNip   string
 	AnggotaName string
 }
+
 // Petugas signature is the who in charge that room
 func (s *Service) trustedReportSignatures(ins *model.Inspection) (*model.Signature, *model.Signature, error) {
 	kepala := findSignatureByRole(ins.Signatures, "KEPALA")

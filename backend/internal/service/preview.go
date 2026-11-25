@@ -79,7 +79,7 @@ func (s *Service) GetInspectionPreview(actor *model.User, id int64) (*Inspection
 		DaysInMonth:      daysInMonth,
 		RoomName:         ins.Room.Name,
 		RoomType:         ins.Room.RoomType,
-		Notes:            ins.Notes,
+		Notes:            normalizeNotes(ins.Notes),
 		KetuaName:        signers.KepalaName,
 		KetuaNip:         signers.KepalaNip,
 		AnggotaName:      signers.AnggotaName,

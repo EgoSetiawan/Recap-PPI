@@ -10,6 +10,7 @@ import {
   isAnggotaRole,
   isKepalaRole,
   normalizeRole,
+  notesHtml,
   qs,
   signatureByRole,
   statusBadge,
@@ -1015,20 +1016,20 @@ async function main() {
     workflowNote = "Pemeriksaan sudah disetujui dan menjadi arsip final.";
   } else if (isDraftInspection && !hasAnggotaSignature) {
     workflowNote = isAssignedInspector
-      ? "Tanda tangani pemeriksaan sebagai petugas pemeriksa, lalu kirim untuk direview kepala ruangan."
+      ? "Tanda tangani pemeriksaan sebagai petugas pemeriksa, lalu kirim untuk direview Kepala Komite IPCLN."
       : "Menunggu tanda tangan petugas pemeriksa sebelum dapat dikirim.";
   } else if (isDraftInspection) {
     workflowNote = isAssignedInspector
-      ? "Tanda tangan petugas sudah tersimpan. Kirim pemeriksaan agar kepala ruangan dapat menandatangani dan menyetujui."
+      ? "Tanda tangan petugas sudah tersimpan. Kirim pemeriksaan agar Kepala Komite IPCLN dapat menandatangani dan menyetujui."
       : "Petugas sudah menandatangani. Menunggu pemeriksaan dikirim untuk review.";
   } else if (isSubmittedInspection && !hasAnggotaSignature) {
     workflowNote = isAssignedInspector
-      ? "Pemeriksaan sudah dikirim tanpa tanda tangan petugas. Lengkapi tanda tangan Anda agar kepala ruangan dapat menandatangani."
+      ? "Pemeriksaan sudah dikirim tanpa tanda tangan petugas. Lengkapi tanda tangan Anda agar Kepala Komite IPCLN dapat menandatangani."
       : "Pemeriksaan sudah dikirim tanpa tanda tangan petugas. Menunggu petugas melengkapi tanda tangan.";
   } else if (isSubmittedInspection && !hasKepalaSignature) {
     workflowNote = isKepala
-      ? "Tanda tangani sebagai kepala ruangan, lalu setujui pemeriksaan ini."
-      : "Menunggu tanda tangan kepala ruangan.";
+      ? "Tanda tangani sebagai Kepala Komite IPCLN, lalu setujui pemeriksaan ini."
+      : "Menunggu tanda tangan Kepala Komite IPCLN.";
   } else if (isSubmittedInspection) {
     workflowNote =
       isKepala || isAdmin
@@ -1036,7 +1037,7 @@ async function main() {
         : "Kedua tanda tangan lengkap. Menunggu persetujuan kepala PPI.";
   }
 
-  // Five-step progress: dibuat -> petugas -> dikirim -> kepala -> disetujui.
+  // Five-step progress: dibuat -> petugas -> dikirim -> Kepala Komite -> disetujui.
   const workflowSteps = [
     { label: "Dibuat", done: true },
     { label: "Petugas", done: hasAnggotaSignature },
@@ -1266,7 +1267,7 @@ async function main() {
                 </button>
               </div>
             `
-            : `<p class="page-meta">${escapeHtml(insp.notes || "—")}</p>`
+            : `<p class="page-meta">${notesHtml(insp.notes, "—")}</p>`
         }
       </div>
     </div>
@@ -1298,8 +1299,8 @@ async function main() {
         </ol>
 
         <div class="sig-row">
-          ${sigBlock("Pemeriksa", anggotaSignature)}
-          ${sigBlock("Kepala Ruangan", kepalaSignature)}
+          ${sigBlock("Kepala Komite IPCLN", kepalaSignature)}
+          ${sigBlock("IPCLN Ruangan", anggotaSignature)}
         </div>
 
         ${workflowNote ? `<p class="approval-note">${escapeHtml(workflowNote)}</p>` : ""}
@@ -1332,7 +1333,7 @@ async function main() {
                   canSignAsKepalaRuangan
                     ? `
                       <button type="button" class="${btn}" id="btn-sign-kepala">
-                        Tanda Tangan Kepala Ruangan
+                        Tanda Tangan Kepala Komite IPCLN
                       </button>
                     `
                     : ""
@@ -1377,6 +1378,8 @@ async function main() {
           },
         });
 
+        // The catatan is kept exactly as typed; commas become line breaks only
+        // when the report is rendered.
         toast("Catatan pemeriksaan berhasil disimpan", "success");
         saveNotesButton.textContent = "Simpan Catatan";
       } catch (error) {
@@ -1402,16 +1405,16 @@ async function main() {
     });
   }
 
-  // KEPALA RUANGAN SIGNATURE MODAL
+  // KEPALA KOMITE IPCLN SIGNATURE MODAL
 
   if (canSignAsKepalaRuangan) {
     mountSignatureModal({
       prefix: "kepala",
       buttonId: "btn-sign-kepala",
-      title: "Tanda Tangan Kepala Ruangan",
+      title: "Tanda Tangan Kepala Komite IPCLN",
       endpoint: `/inspections/${insp.id}/signature/kepala-ruangan`,
-      successMessage: "Tanda tangan kepala ruangan berhasil disimpan",
-      errorMessage: "Gagal menyimpan tanda tangan kepala ruangan",
+      successMessage: "Tanda tangan Kepala Komite IPCLN berhasil disimpan",
+      errorMessage: "Gagal menyimpan tanda tangan Kepala Komite IPCLN",
       inspectionId: insp.id,
     });
   }
@@ -1422,7 +1425,7 @@ async function main() {
 
   submitButton?.addEventListener("click", async () => {
     const confirmed = await confirmDialog(
-      "Kirim pemeriksaan ini untuk direview kepala ruangan? Checklist tidak dapat diubah setelah dikirim.",
+      "Kirim pemeriksaan ini untuk direview Kepala Komite IPCLN? Checklist tidak dapat diubah setelah dikirim.",
     );
 
     if (!confirmed) return;
@@ -1442,7 +1445,7 @@ async function main() {
     }
   });
 
-  // Approve (kepala ruangan / admin).
+  // Approve (Kepala Komite IPCLN / admin).
 
   const approveButton = document.getElementById("btn-approve");
 

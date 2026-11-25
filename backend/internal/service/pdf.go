@@ -209,26 +209,30 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		),
 	)
 
-	notes := strings.TrimSpace(ins.Notes)
-
-	if notes == "" {
-		notes = "-"
+	// One incident per line inside a single box, each line starting with a
+	// dash: only the first and last entries carry the outer borders, the
+	// sides stay open between entries.
+	notes := splitNotes(ins.Notes)
+	if len(notes) == 0 {
+		notes = []string{"-"}
 	}
 
-	m.AddAutoRow(
-		text.NewCol(
-			12,
-			notes,
-			props.Text{
-				Size:   9,
-				Align:  align.Left,
-				Top:    1,
-				Left:   1,
-				Right:  1,
-				Bottom: 1,
-			},
-		).WithStyle(monthlyCellStyle()),
-	)
+	for i, note := range notes {
+		m.AddAutoRow(
+			text.NewCol(
+				12,
+				noteBullet(note),
+				props.Text{
+					Size:   9,
+					Align:  align.Left,
+					Top:    1,
+					Left:   1,
+					Right:  1,
+					Bottom: 1,
+				},
+			).WithStyle(noteCellStyle(i, len(notes))),
+		)
+	}
 
 	m.AddRow(
 		12,
@@ -252,7 +256,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		5,
 		text.NewCol(
 			18,
-			"Sekretaris Komite PPI",
+			"Kepala Komite IPCLN",
 			props.Text{
 				Size:  9,
 				Align: align.Center,
@@ -260,7 +264,7 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 		),
 		text.NewCol(
 			18,
-			"IPCLN",
+			"IPCLN Ruangan",
 			props.Text{
 				Size:  9,
 				Align: align.Center,
@@ -330,6 +334,34 @@ func monthlyCellStyle() *props.Cell {
 		BorderColor:     &props.BlackColor,
 		BorderThickness: 0.1,
 	}
+}
+
+// noteCellStyle renders the catatan entries as one continuous box: the first
+// entry draws the top, the last entry draws the bottom, and every entry draws
+// the sides, so no inner horizontal lines appear between entries.
+func noteCellStyle(index, total int) *props.Cell {
+	style := monthlyCellStyle()
+
+	borderType := border.Left | border.Right
+	if index == 0 {
+		borderType |= border.Top
+	}
+	if index == total-1 {
+		borderType |= border.Bottom
+	}
+	style.BorderType = borderType
+
+	return style
+}
+
+// noteBullet prefixes an incident with a dash so every line of the catatan box
+// starts with "- ". The empty placeholder already is a dash.
+func noteBullet(note string) string {
+	if note == "-" {
+		return note
+	}
+
+	return "- " + note
 }
 
 // Returns the signer NIP.

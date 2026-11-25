@@ -1,6 +1,6 @@
 import { requireAuth, api } from "../api.js";
 import { mountShell, toast } from "../components/shell.js";
-import { escapeHtml, qs, statusBadge } from "../utils/format.js";
+import { escapeHtml, notesHtml, qs, statusBadge } from "../utils/format.js";
 
 // Preview rendered using HTML.
 const CHECK_MARK = `
@@ -9,7 +9,7 @@ const CHECK_MARK = `
   </svg>
 `;
 
-// Only the kepala column prints a NIP; the IPCLN (anggota) column is name-only.
+// Only the Kepala Komite IPCLN column prints a NIP; the IPCLN Ruangan column is name-only.
 function signatureColumn(title, name, image, nip) {
   return `
     <div class="report-signature">
@@ -88,11 +88,11 @@ function renderReport(data) {
     ${renderMatrix(data)}
 
     <h3 class="report-section-title">CATATAN</h3>
-    <div class="report-notes">${escapeHtml(data.notes || "-")}</div>
+    <div class="report-notes">${notesHtml(data.notes)}</div>
 
     <div class="report-signatures">
-      ${signatureColumn("Sekretaris Komite PPI", data.ketua_name, data.ketua_signature, data.ketua_nip)}
-      ${signatureColumn("IPCLN", data.anggota_name, data.anggota_signature)}
+      ${signatureColumn("Kepala Komite IPCLN", data.ketua_name, data.ketua_signature, data.ketua_nip)}
+      ${signatureColumn("IPCLN Ruangan", data.anggota_name, data.anggota_signature)}
     </div>
   `;
 }

@@ -74,6 +74,23 @@ export function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+/** Splits catatan into incidents: a comma or line break starts a new one. */
+export function noteEntries(notes) {
+  return String(notes ?? "")
+    .split(/[,\r\n]+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+/** Catatan as escaped HTML with one incident per line (for read-only views). */
+export function notesHtml(notes, fallback = "-") {
+  const entries = noteEntries(notes);
+
+  if (!entries.length) return escapeHtml(fallback);
+
+  return entries.map((entry) => `- ${escapeHtml(entry)}`).join("<br>");
+}
+
 export function qs(name) {
   return new URLSearchParams(location.search).get(name);
 }
@@ -92,6 +109,17 @@ export function downloadText(filename, text, mime = "text/csv") {
 //   const data = encodeURIComponent(text);
 //   return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${data}`;
 // }
+
+/**
+ * Names in the seed carry academic titles after the first comma, e.g.
+ * "Surya Insaffita, S.Kep., Ns". The UI shows only the name portion;
+ * everything after the first comma is treated as the title.
+ */
+export function displayName(name) {
+  return String(name ?? "")
+    .split(",")[0]
+    .trim();
+}
 
 export function roleLabel(role) {
   const map = {

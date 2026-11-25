@@ -607,7 +607,7 @@ func (h *Handler) AddKepalaSign(c *gin.Context) {
 	response.OK(
 		c,
 		inspection,
-		"Tanda tangan Kepala Ruangan berhasil disimpan",
+		"Tanda tangan Kepala Komite IPCLN berhasil disimpan",
 	)
 }
 

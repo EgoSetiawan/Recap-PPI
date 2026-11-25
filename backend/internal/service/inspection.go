@@ -231,7 +231,7 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 	if !auth.IsKepala(actor.Role) {
 		return nil, response.Err(
 			"FORBIDDEN",
-			"Hanya kepala yang bisa tanda tangan",
+			"Hanya Kepala Komite IPCLN yang bisa tanda tangan",
 			http.StatusForbidden,
 		)
 	}
@@ -241,7 +241,7 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 		return nil, err
 	}
 
-	// Kepala signs after submit.
+	// Kepala Komite IPCLN signs after submit.
 	status := strings.ToUpper(strings.TrimSpace(ins.Status))
 
 	if status == StatusApproved {
@@ -255,12 +255,12 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 	if status != StatusSubmitted {
 		return nil, response.Err(
 			"INVALID_STATUS",
-			"Tanda tangan kepala ruangan hanya dapat dilakukan setelah pemeriksaan dikirim",
+			"Tanda tangan Kepala Komite IPCLN hanya dapat dilakukan setelah pemeriksaan dikirim",
 			http.StatusConflict,
 		)
 	}
 
-	// Kepala signs only after Anggota.
+	// Kepala Komite IPCLN signs only after the IPCLN Ruangan.
 	if !hasSignature(ins.Signatures, "ANGGOTA") {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
@@ -272,7 +272,7 @@ func (s *Service) AddKepalaRuanganSignature(actor *model.User, id int64, imageDa
 	if hasSignature(ins.Signatures, "KEPALA") {
 		return nil, response.Err(
 			"INVALID_STATUS",
-			"Tanda tangan kepala ruangan sudah tersimpan",
+			"Tanda tangan Kepala Komite IPCLN sudah tersimpan",
 			http.StatusConflict,
 		)
 	}
@@ -372,7 +372,7 @@ func (s *Service) ApproveInspection(actor *model.User, id int64) (*model.Inspect
 	if !hasSignature(ins.Signatures, "KEPALA") {
 		return nil, response.Err(
 			"VALIDATION_ERROR",
-			"Tanda tangan kepala ruangan belum tersedia",
+			"Tanda tangan Kepala Komite IPCLN belum tersedia",
 			http.StatusUnprocessableEntity,
 		)
 	}
@@ -618,7 +618,7 @@ func (s *Service) CreateInspection(actor *model.User, in CreateInspectionInput) 
 		RoomID:          room.ID,
 		InspectorID:     inspectorID,
 		InspectionMonth: month,
-		Notes:           strings.TrimSpace(in.Notes),
+		Notes:           normalizeNotes(in.Notes),
 		Status:          StatusDraft,
 		Checklist:       checklist,
 		Signatures:      signatures,
@@ -1300,10 +1300,10 @@ func (s *Service) UpdateInspectionNotes(actor *model.User, inspectionID int64, n
 		return err
 	}
 
-	// Update monthly notes.
+	// Update monthly notes, one incident per line.
 	return s.Repo.UpdateInspectionNotes(
 		inspectionID,
-		strings.TrimSpace(notes),
+		normalizeNotes(notes),
 	)
 }
 
