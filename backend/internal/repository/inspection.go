@@ -25,11 +25,12 @@ SELECT i.id, i.room_id, i.inspector_id, i.inspection_month, i.notes, i.status, i
 	FROM inspections i`
 
 type InspectionFilter struct {
-	ScopeIDs    []int64
-	RoomID      *int64
-	Status      string
-	Month       *time.Time
-	InspectorID *int64
+	ScopeIDs     []int64
+	RoomID       *int64
+	Status       string
+	ExcludeDraft bool
+	Month        *time.Time
+	InspectorID  *int64
 }
 
 func replaceChecklist(tx *sql.Tx, inspectionID int64, items []model.ChecklistAnswer) error {
@@ -317,6 +318,11 @@ func (r *Repo) ListInspections(f InspectionFilter) ([]model.Inspection, error) {
 		)
 		args = append(args, f.Status)
 		n++
+	}
+
+	// Exclude draft inspections (used by the general listing).
+	if f.ExcludeDraft {
+		conds = append(conds, "i.status <> 'DRAFT'")
 	}
 
 	// Filter by month.

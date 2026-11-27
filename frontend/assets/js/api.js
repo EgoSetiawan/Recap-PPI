@@ -70,7 +70,10 @@ export function hasAnyPermission(...perms) {
 
 /** Fetch an API path with optional query params and RequestInit. */
 export async function api(path, options = {}) {
-  const base = (window.APP_CONFIG || APP_CONFIG).API_BASE_URL.replace(/\/$/, "");
+  const base = (window.APP_CONFIG || APP_CONFIG).API_BASE_URL.replace(
+    /\/$/,
+    "",
+  );
   let url = `${base}/${String(path).replace(/^\//, "")}`;
   if (options.query) {
     const qs = new URLSearchParams();
@@ -95,7 +98,8 @@ export async function api(path, options = {}) {
 
   if (
     res.ok &&
-    (ct.includes("application/pdf") || (String(path).includes("/pdf") && !ct.includes("json")))
+    (ct.includes("application/pdf") ||
+      (String(path).includes("/pdf") && !ct.includes("json")))
   ) {
     const blob = await res.blob();
     return { success: true, data: blob, pdf: true };
@@ -129,8 +133,10 @@ function resolveLoginPath() {
 }
 
 export async function login(email, password) {
-  const res = await api("/auth/login", { method: "POST", body: { email, password } });
-  console.log("LOGIN API RESPONSE:", res);
+  const res = await api("/auth/login", {
+    method: "POST",
+    body: { email, password },
+  });
   setSession(res.data.token, res.data.user);
   return res.data.user;
 }
@@ -142,13 +148,17 @@ export async function logout() {
     /* ignore */
   }
   clearSession();
-  location.href = location.pathname.includes("/pages/") ? "../login.html" : "login.html";
+  location.href = location.pathname.includes("/pages/")
+    ? "../login.html"
+    : "login.html";
 }
 
 export async function requireAuth() {
   const token = getToken();
   if (!token) {
-    location.href = location.pathname.includes("/pages/") ? "../login.html" : "login.html";
+    location.href = location.pathname.includes("/pages/")
+      ? "../login.html"
+      : "login.html";
     return null;
   }
   try {
@@ -157,7 +167,9 @@ export async function requireAuth() {
     return res.data;
   } catch {
     clearSession();
-    location.href = location.pathname.includes("/pages/") ? "../login.html" : "login.html";
+    location.href = location.pathname.includes("/pages/")
+      ? "../login.html"
+      : "login.html";
     return null;
   }
 }

@@ -64,9 +64,13 @@ export class SignaturePad {
 
   _bind() {
     this.root.querySelectorAll(".sig-tab").forEach((btn) => {
-      btn.addEventListener("click", () => this.setMode(btn.getAttribute("data-mode")));
+      btn.addEventListener("click", () =>
+        this.setMode(btn.getAttribute("data-mode")),
+      );
     });
-    this.root.querySelector('[data-act="clear"]').addEventListener("click", () => this.clear());
+    this.root
+      .querySelector('[data-act="clear"]')
+      .addEventListener("click", () => this.clear());
     this.root
       .querySelector('[data-act="clear-upload"]')
       .addEventListener("click", () => this.clear());
@@ -115,8 +119,12 @@ export class SignaturePad {
     this.root.querySelectorAll(".sig-tab").forEach((b) => {
       b.classList.toggle("active", b.getAttribute("data-mode") === this.mode);
     });
-    this.root.querySelector(".sig-draw-panel").classList.toggle("hidden", this.mode !== "draw");
-    this.root.querySelector(".sig-upload-panel").classList.toggle("hidden", this.mode !== "upload");
+    this.root
+      .querySelector(".sig-draw-panel")
+      .classList.toggle("hidden", this.mode !== "draw");
+    this.root
+      .querySelector(".sig-upload-panel")
+      .classList.toggle("hidden", this.mode !== "upload");
   }
 
   isEmpty() {
@@ -140,7 +148,8 @@ export class SignaturePad {
   setUploadedFile(file) {
     if (
       !file ||
-      (!/^image\/(png|jpe?g|webp)$/i.test(file.type) && !/\.(png|jpe?g|webp)$/i.test(file.name))
+      (!/^image\/(png|jpe?g|webp)$/i.test(file.type) &&
+        !/\.(png|jpe?g|webp)$/i.test(file.name))
     ) {
       return;
     }

@@ -11,7 +11,12 @@ export const btnSm = "btn-sm";
 export const iconBtn = "icon-btn";
 
 export function button(variant = "primary", size = "md") {
-  const base = variant === "secondary" ? btnSecondary : variant === "danger" ? btnDanger : btn;
+  const base =
+    variant === "secondary"
+      ? btnSecondary
+      : variant === "danger"
+        ? btnDanger
+        : btn;
   return size === "sm" ? `${base} ${btnSm}` : base;
 }
 

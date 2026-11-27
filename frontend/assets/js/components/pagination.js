@@ -19,7 +19,9 @@ function pageNumbers(current, total) {
     pages.add(total - 3);
   }
 
-  return [...pages].filter((page) => page >= 1 && page <= total).sort((a, b) => a - b);
+  return [...pages]
+    .filter((page) => page >= 1 && page <= total)
+    .sort((a, b) => a - b);
 }
 
 function pageButtons(page, total) {
@@ -122,13 +124,15 @@ export function renderPagination(
     });
   });
 
-  container.querySelector("[data-page-size]")?.addEventListener("change", (event) => {
-    const size = Number(event.target.value);
+  container
+    .querySelector("[data-page-size]")
+    ?.addEventListener("change", (event) => {
+      const size = Number(event.target.value);
 
-    if (!size || size === pageSize) return;
+      if (!size || size === pageSize) return;
 
-    onPageSizeChange?.(size);
-  });
+      onPageSizeChange?.(size);
+    });
 }
 
 export function emptyPagination(container) {

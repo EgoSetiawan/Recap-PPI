@@ -9,7 +9,9 @@
 /* 1. Design tokens */
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-sans:
+    "Plus Jakarta Sans", "Inter", "Segoe UI", system-ui, -apple-system,
+    sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace;
 
   /* brand */
@@ -56,10 +58,15 @@
   --radius-2xl: 20px;
 
   --shadow-2xs: 0 1px 2px rgba(14, 23, 38, 0.05);
-  --shadow-xs: 0 1px 2px rgba(14, 23, 38, 0.06), 0 1px 3px rgba(14, 23, 38, 0.04);
-  --shadow-sm: 0 1px 2px rgba(14, 23, 38, 0.04), 0 4px 14px -6px rgba(14, 23, 38, 0.14);
-  --shadow-md: 0 2px 6px rgba(14, 23, 38, 0.05), 0 14px 34px -16px rgba(14, 23, 38, 0.22);
-  --shadow-lg: 0 8px 18px -8px rgba(14, 23, 38, 0.14), 0 32px 64px -24px rgba(14, 23, 38, 0.3);
+  --shadow-xs:
+    0 1px 2px rgba(14, 23, 38, 0.06), 0 1px 3px rgba(14, 23, 38, 0.04);
+  --shadow-sm:
+    0 1px 2px rgba(14, 23, 38, 0.04), 0 4px 14px -6px rgba(14, 23, 38, 0.14);
+  --shadow-md:
+    0 2px 6px rgba(14, 23, 38, 0.05), 0 14px 34px -16px rgba(14, 23, 38, 0.22);
+  --shadow-lg:
+    0 8px 18px -8px rgba(14, 23, 38, 0.14),
+    0 32px 64px -24px rgba(14, 23, 38, 0.3);
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --leading-tight: 1.2;
@@ -79,8 +86,16 @@
     margin: 0;
     background-color: var(--color-background);
     background-image:
-      radial-gradient(1100px 520px at 8% -12%, rgba(59, 91, 253, 0.09), transparent 62%),
-      radial-gradient(900px 460px at 102% -6%, rgba(6, 182, 212, 0.09), transparent 58%),
+      radial-gradient(
+        1100px 520px at 8% -12%,
+        rgba(59, 91, 253, 0.09),
+        transparent 62%
+      ),
+      radial-gradient(
+        900px 460px at 102% -6%,
+        rgba(6, 182, 212, 0.09),
+        transparent 58%
+      ),
       linear-gradient(180deg, #f7f9fd 0%, #f3f6fb 100%);
     background-attachment: fixed;
     color: var(--color-text);
@@ -124,7 +139,8 @@
   }
 
   :focus-visible {
-    outline: 2px solid color-mix(in oklab, var(--color-primary) 65%, transparent);
+    outline: 2px solid
+      color-mix(in oklab, var(--color-primary) 65%, transparent);
     outline-offset: 2px;
   }
 
@@ -191,8 +207,16 @@
   border-right: 1px solid rgba(255, 255, 255, 0.07);
   background-color: var(--color-sidebar);
   background-image:
-    radial-gradient(420px 260px at 18% -4%, rgba(59, 91, 253, 0.34), transparent 70%),
-    radial-gradient(360px 260px at 110% 14%, rgba(6, 182, 212, 0.16), transparent 70%),
+    radial-gradient(
+      420px 260px at 18% -4%,
+      rgba(59, 91, 253, 0.34),
+      transparent 70%
+    ),
+    radial-gradient(
+      360px 260px at 110% 14%,
+      rgba(6, 182, 212, 0.16),
+      transparent 70%
+    ),
     linear-gradient(180deg, #0b1526 0%, #0a1322 52%, #091120 100%);
   color: var(--color-sidebar-text);
 }
@@ -361,7 +385,11 @@
 
 .sidebar a.nav-link.active {
   border-color: rgba(122, 143, 255, 0.25);
-  background-image: linear-gradient(90deg, rgba(79, 107, 255, 0.3), rgba(79, 107, 255, 0.05));
+  background-image: linear-gradient(
+    90deg,
+    rgba(79, 107, 255, 0.3),
+    rgba(79, 107, 255, 0.05)
+  );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     0 8px 18px -14px rgba(59, 91, 253, 0.9);
@@ -403,7 +431,11 @@
   flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 50%;
-  background: linear-gradient(140deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03));
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.03)
+  );
   color: #fff;
   font-size: 11.5px;
   font-weight: 700;
@@ -825,7 +857,12 @@
   gap: 12px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--color-border);
-  background: linear-gradient(180deg, rgba(247, 249, 252, 0.9), rgba(255, 255, 255, 0)) padding-box;
+  background: linear-gradient(
+      180deg,
+      rgba(247, 249, 252, 0.9),
+      rgba(255, 255, 255, 0)
+    )
+    padding-box;
   color: var(--color-text);
   font-size: 13px;
   font-weight: 650;
@@ -1168,7 +1205,12 @@
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
   background-color: var(--color-primary);
-  background-image: linear-gradient(180deg, #5574ff 0%, #3b5bfd 62%, #3550e6 100%);
+  background-image: linear-gradient(
+    180deg,
+    #5574ff 0%,
+    #3b5bfd 62%,
+    #3550e6 100%
+  );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.26),
     0 1px 2px rgba(16, 24, 40, 0.14),
@@ -1195,7 +1237,12 @@
 
 .btn:hover {
   background-color: var(--color-primary-hover);
-  background-image: linear-gradient(180deg, #637fff 0%, #435fe6 62%, #3a52cf 100%);
+  background-image: linear-gradient(
+    180deg,
+    #637fff 0%,
+    #435fe6 62%,
+    #3a52cf 100%
+  );
   color: #fff;
   text-decoration: none;
   box-shadow:
@@ -2157,8 +2204,16 @@ table.data .row-actions .btn {
   overflow: hidden;
   background-color: #0a1322;
   background-image:
-    radial-gradient(680px 420px at 8% 4%, rgba(59, 91, 253, 0.5), transparent 66%),
-    radial-gradient(520px 380px at 96% 92%, rgba(6, 182, 212, 0.32), transparent 64%),
+    radial-gradient(
+      680px 420px at 8% 4%,
+      rgba(59, 91, 253, 0.5),
+      transparent 66%
+    ),
+    radial-gradient(
+      520px 380px at 96% 92%,
+      rgba(6, 182, 212, 0.32),
+      transparent 64%
+    ),
     linear-gradient(150deg, #0b1526 0%, #0a1322 55%, #0a1729 100%);
   color: #fff;
 }
@@ -2171,7 +2226,11 @@ table.data .row-actions .btn {
     linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
   background-size: 46px 46px;
-  mask-image: radial-gradient(600px 460px at 20% 20%, #000 10%, transparent 78%);
+  mask-image: radial-gradient(
+    600px 460px at 20% 20%,
+    #000 10%,
+    transparent 78%
+  );
 }
 
 .login-hero > * {
@@ -2702,15 +2761,20 @@ table.data .row-actions .btn {
 }
 
 .inspection-calendar__day.is-selected .inspection-calendar__day-number,
-#detail-root .inspection-calendar__day.is-selected .inspection-calendar__day-number {
+#detail-root
+  .inspection-calendar__day.is-selected
+  .inspection-calendar__day-number {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
   color: #fff;
 }
 
-#detail-root .inspection-calendar__day.is-sunday:not(.is-selected) .inspection-calendar__day-number,
-.inspection-calendar__day.is-sunday:not(.is-selected) .inspection-calendar__day-number {
+#detail-root
+  .inspection-calendar__day.is-sunday:not(.is-selected)
+  .inspection-calendar__day-number,
+.inspection-calendar__day.is-sunday:not(.is-selected)
+  .inspection-calendar__day-number {
   color: #dc2626;
 }
 

@@ -26,8 +26,10 @@ const ICONS = {
     '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
   inspection:
     '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 12v6M9 15h6"/>',
-  draft: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
-  history: '<path d="M3 12a9 9 0 1 0 2.7-6.4L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+  draft:
+    '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  history:
+    '<path d="M3 12a9 9 0 1 0 2.7-6.4L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
   users:
     '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   logout:
@@ -203,7 +205,12 @@ export function confirmDialog(message) {
 }
 
 // Generic modal.
-export function openModal({ title, bodyHtml, onSubmit, submitLabel = "Simpan" }) {
+export function openModal({
+  title,
+  bodyHtml,
+  onSubmit,
+  submitLabel = "Simpan",
+}) {
   const backdrop = document.createElement("div");
 
   backdrop.className = modalBackdrop;
@@ -262,7 +269,10 @@ export function openModal({ title, bodyHtml, onSubmit, submitLabel = "Simpan" })
   };
 
   backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop || e.target.getAttribute("data-act") === "close") {
+    if (
+      e.target === backdrop ||
+      e.target.getAttribute("data-act") === "close"
+    ) {
       close();
     }
   });
@@ -291,7 +301,9 @@ function buildNav(activePage) {
   const role = user?.role;
 
   return NAV_SECTIONS.map((section) => {
-    const items = section.items.filter((item) => !item.roles || item.roles.includes(role));
+    const items = section.items.filter(
+      (item) => !item.roles || item.roles.includes(role),
+    );
 
     const seen = new Set();
 
@@ -663,7 +675,9 @@ export async function mountShell(activePage, options = {}) {
   }
 
   // Logout and user menu.
-  document.getElementById("btn-logout")?.addEventListener("click", () => logout());
+  document
+    .getElementById("btn-logout")
+    ?.addEventListener("click", () => logout());
 
   const userMenuButton = document.getElementById("btn-user-menu");
   const userMenuPanel = document.getElementById("user-menu");
@@ -680,7 +694,8 @@ export async function mountShell(activePage, options = {}) {
 
   document.addEventListener("click", (event) => {
     if (!userMenuPanel || userMenuPanel.classList.contains("hidden")) return;
-    if (event.target === userMenuButton || userMenuPanel.contains(event.target)) return;
+    if (event.target === userMenuButton || userMenuPanel.contains(event.target))
+      return;
     setUserMenu(false);
   });
 
@@ -688,14 +703,18 @@ export async function mountShell(activePage, options = {}) {
     if (event.key === "Escape") setUserMenu(false);
   });
 
-  document.getElementById("btn-user-logout")?.addEventListener("click", () => logout());
+  document
+    .getElementById("btn-user-logout")
+    ?.addEventListener("click", () => logout());
 
   // Global room search.
-  document.getElementById("global-search-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
+  document
+    .getElementById("global-search-form")
+    ?.addEventListener("submit", (e) => {
+      e.preventDefault();
 
-    const q = new FormData(e.target).get("q");
+      const q = new FormData(e.target).get("q");
 
-    location.href = `rooms.html?q=${encodeURIComponent(String(q || ""))}`;
-  });
+      location.href = `rooms.html?q=${encodeURIComponent(String(q || ""))}`;
+    });
 }

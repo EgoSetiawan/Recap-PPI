@@ -22,7 +22,8 @@ function detailFor(item) {
 
   if (item.action === "UPDATE_USER_ROOMS") {
     const target =
-      item.entity_name || (item.entity_id ? `Pengguna #${item.entity_id}` : "Pengguna");
+      item.entity_name ||
+      (item.entity_id ? `Pengguna #${item.entity_id}` : "Pengguna");
     const oldLabel = listLabel(item.old_value?.room_names);
     const newLabel = listLabel(item.new_value?.room_names);
 
@@ -41,7 +42,9 @@ function detailFor(item) {
 
   if (item.action === "DELETE_INSPECTION") {
     const value = item.old_value || {};
-    return [value.room_name, value.inspection_month, value.status].filter(Boolean).join(" · ");
+    return [value.room_name, value.inspection_month, value.status]
+      .filter(Boolean)
+      .join(" · ");
   }
 
   if (item.old_value) {

@@ -12,8 +12,6 @@ import (
 	"PPI/internal/repository"
 	"PPI/internal/response"
 
-	// "PPI/internal/storage"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -24,10 +22,7 @@ type Service struct {
 	JWTTTL    time.Duration
 	AppEnv    string
 	SeedPath  string
-	// UploadDir         string
-	Seeder            func() error
-	ImageKitPublicURL string
-	MaxUploadBytes    int64
+	Seeder    func() error
 }
 
 type UserInput struct {
@@ -57,15 +52,12 @@ type UpdateUserInput struct {
 }
 
 func New(repo *repository.Repo, jwtSecret string, ttl time.Duration, appEnv, seedPath string) *Service {
-	// uploadDir
 	return &Service{
 		Repo:      repo,
 		JWTSecret: jwtSecret,
 		JWTTTL:    ttl,
 		AppEnv:    appEnv,
 		SeedPath:  seedPath,
-		// UploadDir:      uploadDir,
-		// MaxUploadBytes: 10 * 1024 * 1024,
 	}
 }
 

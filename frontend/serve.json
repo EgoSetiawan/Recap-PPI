@@ -18,8 +18,8 @@
       "destination": "/pages/dashboard.html"
     },
     {
-      "source": "/pages/pengguna",
-      "destination": "/pages/pengguna.html"
+      "source": "/pages/users",
+      "destination": "/pages/users.html"
     },
     {
       "source": "/pages/inspection",
@@ -40,10 +40,6 @@
     {
       "source": "/pages/rooms",
       "destination": "/pages/rooms.html"
-    },
-    {
-      "source": "/pages/inspection",
-      "destination": "/pages/inspection.html"
     },
     {
       "source": "/pages/latest",

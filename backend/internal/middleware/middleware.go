@@ -89,7 +89,6 @@ func Auth(secret string, bl TokenBlacklist, users UserLoader) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		// user.Permissions = auth.PermissionsFor(user.Role)
 		c.Set(ContextUserKey, user)
 		c.Set("jti", claims.JTI)
 		c.Set("token_exp", claims.ExpiresAt.Time)
@@ -114,10 +113,20 @@ type rateBucket struct {
 func LoginRateLimit(max int, window time.Duration) gin.HandlerFunc {
 	var mu sync.Mutex
 	buckets := map[string]*rateBucket{}
+	var lastCleanup time.Time
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
 		now := time.Now()
 		mu.Lock()
+		// Sweep expired buckets once per window so the map stays bounded.
+		if now.Sub(lastCleanup) >= window {
+			for key, b := range buckets {
+				if now.After(b.reset) {
+					delete(buckets, key)
+				}
+			}
+			lastCleanup = now
+		}
 		b, ok := buckets[ip]
 		if !ok || now.After(b.reset) {
 			buckets[ip] = &rateBucket{count: 1, reset: now.Add(window)}

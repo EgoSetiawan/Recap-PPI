@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"strings"
 	"testing"
 
 	"PPI/internal/model"
@@ -76,6 +77,35 @@ func TestSignatureDataURLToPNGRejectsInvalidInput(t *testing.T) {
 		if _, err := signatureDataURLToPNG(dataURL); err == nil {
 			t.Errorf("signatureDataURLToPNG(%q) returned no error", dataURL)
 		}
+	}
+}
+
+// Regression test: a data URL whose header smuggles HTML attributes must be
+// rejected, even when the payload after the comma is a perfectly valid PNG.
+func TestSignatureDataURLToPNGRejectsHeaderInjection(t *testing.T) {
+	valid := sampleSignatureDataURL(t)
+	b64 := valid[strings.Index(valid, ",")+1:]
+
+	attacks := []string{
+		`data:image/png;base64" onerror="alert(document.domain),` + b64,
+		`data:image/png;base64" onerror="alert(1)//,` + b64,
+		`data:image/png;base64 onerror=alert(1),` + b64,
+		`data:image/png,` + b64,
+		`data:image/png;charset=utf-8;base64,` + b64,
+		`DATA:IMAGE/PNG;BASE64" onerror="alert(1),` + b64,
+	}
+
+	for _, dataURL := range attacks {
+		if _, err := signatureDataURLToPNG(dataURL); err == nil {
+			t.Errorf("signatureDataURLToPNG(%q) returned no error", dataURL)
+		}
+		if validSignatureImage(dataURL) {
+			t.Errorf("validSignatureImage(%q) = true, want false", dataURL)
+		}
+	}
+
+	if !validSignatureImage(valid) {
+		t.Error("validSignatureImage rejected a legitimate signature data URL")
 	}
 }
 

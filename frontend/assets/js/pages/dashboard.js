@@ -1,7 +1,15 @@
 import { requireAuth, api } from "../api.js";
 import { mountShell, toast } from "../components/shell.js";
 import { escapeHtml, formatMonth } from "../utils/format.js";
-import { btn, btnSecondary, btnSm, tableWrap, empty, statCard, badge } from "../ui.js";
+import {
+  btn,
+  btnSecondary,
+  btnSm,
+  tableWrap,
+  empty,
+  statCard,
+  badge,
+} from "../ui.js";
 
 const STAT_ICONS = {
   rooms:
@@ -11,7 +19,8 @@ const STAT_ICONS = {
   open: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   submitted:
     '<path d="M4 5h16v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"/><path d="M4 6h16l-7 6a2 2 0 0 1-2 0z"/><path d="M9 22h6"/>',
-  approved: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
+  approved:
+    '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
 };
 
 function statIcon(path) {
@@ -229,7 +238,10 @@ async function main() {
       .map((item) => {
         const value = totals[item.key] || 0;
 
-        const percentage = totalInspections > 0 ? Math.round((value / totalInspections) * 100) : 0;
+        const percentage =
+          totalInspections > 0
+            ? Math.round((value / totalInspections) * 100)
+            : 0;
 
         return `
           <div class="bar-row">

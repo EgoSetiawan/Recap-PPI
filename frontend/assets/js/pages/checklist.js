@@ -31,7 +31,9 @@ async function main() {
 
   // Super Admin can manage checklist items.
   const canManageChecklist =
-    roleId === 1 || roleName === "SUPER_ADMIN" || hasPermission("checklist.manage");
+    roleId === 1 ||
+    roleName === "SUPER_ADMIN" ||
+    hasPermission("checklist.manage");
 
   const roomTypes = {
     ALL: "Semua Ruangan",
@@ -203,7 +205,9 @@ async function main() {
                 room_type: String(data.room_type || "ALL"),
                 description: String(data.description || "").trim(),
                 order_number: Number(data.order_number) || 99,
-                is_required: Boolean(form.querySelector('[name="is_required"]')?.checked),
+                is_required: Boolean(
+                  form.querySelector('[name="is_required"]')?.checked,
+                ),
               },
             });
 
@@ -262,7 +266,9 @@ async function main() {
 
                           <td class="hide-sm">
                             ${escapeHtml(
-                              roomTypes[item.room_type] || item.room_type || "Semua Ruangan",
+                              roomTypes[item.room_type] ||
+                                item.room_type ||
+                                "Semua Ruangan",
                             )}
                           </td>
 

@@ -156,8 +156,13 @@ func (r *Repo) GetByEmail(email string) (*model.User, error) {
 }
 
 func (r *Repo) GetByUsernameOrEmail(identifier string) (*model.User, error) {
+	// Exact email matches win over name matches, and identical names resolve
+	// deterministically to the lowest user ID, so login never depends on
+	// PostgreSQL row order.
 	return r.scanUser(r.DB.QueryRow(
-		userSelect+` WHERE LOWER(u.email)=LOWER($1) OR LOWER(u.name)=LOWER($1)`,
+		userSelect+` WHERE LOWER(u.email)=LOWER($1) OR LOWER(u.name)=LOWER($1)
+		 ORDER BY (LOWER(u.email)=LOWER($1)) DESC, u.id ASC
+		 LIMIT 1`,
 		identifier,
 	))
 }
@@ -439,10 +444,6 @@ func (r *Repo) CreateRoom(room *model.Room) error {
 	).Scan(&room.ID, &room.CreatedAt, &room.UpdatedAt)
 }
 
-func (r *Repo) GetRoomWithActors(id int64) (*model.Room, error) {
-	return r.scanRoom(r.DB.QueryRow(RoomWithActors+` WHERE r.id=$1`, id))
-}
-
 func (r *Repo) GetInspectionPDFChecklist(inspectionID int64, roomType string, year int, month time.Month) (*InspectionPDFChecklist, error) {
 	// Get checklist items for this room type.
 	itemRows, err := r.DB.Query(`
@@ -546,20 +547,6 @@ func (r *Repo) GetInspectionPDFChecklist(inspectionID int64, roomType string, ye
 		Items:   items,
 		Answers: answers,
 	}, nil
-}
-
-func (r *Repo) GetKetuaName() (string, error) {
-	var name string
-
-	err := r.DB.QueryRow(`
-		SELECT u.name
-		FROM users u
-		JOIN roles r ON r.id = u.role_id
-		WHERE r.name = 'KEPALA'
-		LIMIT 1
-	`).Scan(&name)
-
-	return name, err
 }
 
 // Returns the KEPALA assigned to the room so reports name the room owner.

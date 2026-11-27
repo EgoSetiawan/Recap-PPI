@@ -508,9 +508,12 @@ async function loadChecklistForRoom() {
   draftDays.clear();
   selectedDate = `${monthKey}-01`;
 
-  document.getElementById("selected-room-name").textContent = roomName(selectedRoom);
+  document.getElementById("selected-room-name").textContent =
+    roomName(selectedRoom);
 
-  document.getElementById("selected-room-code").textContent = roomCode(selectedRoom)
+  document.getElementById("selected-room-code").textContent = roomCode(
+    selectedRoom,
+  )
     ? `Kode: ${roomCode(selectedRoom)}`
     : "";
 
@@ -538,7 +541,9 @@ function dateKey(day) {
 }
 
 function currentDayItems() {
-  const rows = [...document.querySelectorAll("#create-daily-checklist tr[data-item-id]")];
+  const rows = [
+    ...document.querySelectorAll("#create-daily-checklist tr[data-item-id]"),
+  ];
 
   return rows.map((row) => {
     const statusField = row.querySelector("[data-status]");
@@ -753,13 +758,16 @@ function renderCreateCalendar() {
 function renderCreateDay() {
   const items = getDraftItems(selectedDate);
 
-  const itemMap = new Map(items.map((item) => [Number(item.checklist_item_id), item]));
+  const itemMap = new Map(
+    items.map((item) => [Number(item.checklist_item_id), item]),
+  );
 
   const sortedDefinitions = [...definitions].sort(
     (a, b) => (a.order_number ?? 999) - (b.order_number ?? 999),
   );
 
-  document.getElementById("selected-date-title").textContent = `Checklist tanggal ${selectedDate}`;
+  document.getElementById("selected-date-title").textContent =
+    `Checklist tanggal ${selectedDate}`;
 
   document.getElementById("selected-date-progress").textContent =
     `${countCompleted(items)} dari ${definitions.length} item dinilai untuk ${selectedDate}.`;
@@ -874,17 +882,25 @@ function setupSignatureModal() {
     }
   }
 
-  document.getElementById("btn-open-signature").addEventListener("click", openModal);
+  document
+    .getElementById("btn-open-signature")
+    .addEventListener("click", openModal);
 
-  document.getElementById("btn-close-signature").addEventListener("click", closeModal);
+  document
+    .getElementById("btn-close-signature")
+    .addEventListener("click", closeModal);
 
-  document.getElementById("btn-cancel-signature").addEventListener("click", closeModal);
+  document
+    .getElementById("btn-cancel-signature")
+    .addEventListener("click", closeModal);
 
-  document.getElementById("btn-clear-signature").addEventListener("click", () => {
-    if (signaturePad) {
-      signaturePad.clear();
-    }
-  });
+  document
+    .getElementById("btn-clear-signature")
+    .addEventListener("click", () => {
+      if (signaturePad) {
+        signaturePad.clear();
+      }
+    });
 
   modal.addEventListener("click", (event) => {
     if (event.target === modal) {
@@ -898,136 +914,164 @@ function setupSignatureModal() {
     }
   });
 
-  document.getElementById("btn-save-signature").addEventListener("click", async (event) => {
-    const button = event.currentTarget;
+  document
+    .getElementById("btn-save-signature")
+    .addEventListener("click", async (event) => {
+      const button = event.currentTarget;
 
-    if (!signaturePad || signaturePad.isEmpty()) {
-      toast("Tanda tangan wajib diisi.", "error");
-      return;
-    }
-
-    button.disabled = true;
-
-    try {
-      const payload = await signaturePad.getPayload();
-
-      if (
-        !payload ||
-        typeof payload.image_data_url !== "string" ||
-        !payload.image_data_url.startsWith("data:image/") ||
-        payload.image_data_url.length < 80
-      ) {
-        toast("Tanda tangan tidak valid.", "error");
+      if (!signaturePad || signaturePad.isEmpty()) {
+        toast("Tanda tangan wajib diisi.", "error");
         return;
       }
 
-      signaturePayload = payload;
+      button.disabled = true;
 
-      document.getElementById("signature-status").textContent = "Tanda tangan sudah disimpan";
+      try {
+        const payload = await signaturePad.getPayload();
 
-      document.getElementById("btn-open-signature").textContent = "Ubah Tanda Tangan";
+        // Mirrors the backend validator: only a plain base64 data-URL header is
+        // accepted, so no HTML can be smuggled through the attribute value.
+        const signatureDataURLRe =
+          /^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/i;
 
-      closeModal();
+        if (
+          !payload ||
+          typeof payload.image_data_url !== "string" ||
+          !signatureDataURLRe.test(payload.image_data_url) ||
+          payload.image_data_url.length < 80
+        ) {
+          toast("Tanda tangan tidak valid.", "error");
+          return;
+        }
 
-      toast("Tanda tangan berhasil disimpan.", "success");
-    } catch (error) {
-      toast(error.message || "Gagal menyimpan tanda tangan.", "error");
-    } finally {
-      button.disabled = false;
-    }
-  });
+        signaturePayload = payload;
+
+        document.getElementById("signature-status").textContent =
+          "Tanda tangan sudah disimpan";
+
+        document.getElementById("btn-open-signature").textContent =
+          "Ubah Tanda Tangan";
+
+        closeModal();
+
+        toast("Tanda tangan berhasil disimpan.", "success");
+      } catch (error) {
+        toast(error.message || "Gagal menyimpan tanda tangan.", "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
 }
 
 // CREATE INSPECTION
 
 function setupCreateInspection(canSignAsAnggota) {
-  document.getElementById("btn-create-inspection").addEventListener("click", async (event) => {
-    const button = event.currentTarget;
+  document
+    .getElementById("btn-create-inspection")
+    .addEventListener("click", async (event) => {
+      const button = event.currentTarget;
 
-    captureCurrentDay();
+      captureCurrentDay();
 
-    if (!selectedRoom) {
-      toast("Pilih ruangan dan muat checklist terlebih dahulu.", "error");
-      return;
-    }
-
-    if (canSignAsAnggota && !signaturePayload) {
-      toast("Tanda tangan petugas wajib diisi.", "error");
-      return;
-    }
-
-    const days = [...draftDays.values()].sort((a, b) => a.answer_date.localeCompare(b.answer_date));
-
-    if (!days.length) {
-      toast("Isi checklist pada minimal satu tanggal sebelum membuat pemeriksaan.", "error");
-      return;
-    }
-
-    const hasAnyAnswer = days.some((day) => day.items.some((item) => Boolean(item.status)));
-
-    if (!hasAnyAnswer) {
-      toast("Isi minimal satu penilaian sebelum membuat pemeriksaan.", "error");
-      return;
-    }
-
-    const payload = {
-      room_id: Number(selectedRoom.id),
-      inspection_month: `${monthKey}-01T00:00:00Z`,
-      notes: document.getElementById("insp-notes").value.trim(),
-      days,
-    };
-
-    // The petugas signature belongs to the room's assigned Anggota. A
-    // kepala/admin creates the draft without signing it as the petugas.
-    if (canSignAsAnggota) {
-      payload.signature = signaturePayload;
-    }
-
-    button.disabled = true;
-    button.textContent = "Membuat pemeriksaan...";
-
-    try {
-      const response = await api("/inspections", {
-        method: "POST",
-        body: payload,
-      });
-
-      const inspection =
-        response?.data?.inspection ?? response?.data ?? response?.inspection ?? response;
-
-      if (!inspection?.id) {
-        throw new Error("Server tidak mengembalikan ID pemeriksaan.");
+      if (!selectedRoom) {
+        toast("Pilih ruangan dan muat checklist terlebih dahulu.", "error");
+        return;
       }
 
-      toast("Pemeriksaan dan checklist berhasil dibuat.", "success");
+      if (canSignAsAnggota && !signaturePayload) {
+        toast("Tanda tangan petugas wajib diisi.", "error");
+        return;
+      }
 
-      window.location.href = `inspection-detail.html?id=${encodeURIComponent(inspection.id)}`;
-    } catch (error) {
-      console.error("Create inspection error:", error);
+      const days = [...draftDays.values()].sort((a, b) =>
+        a.answer_date.localeCompare(b.answer_date),
+      );
 
-      // Handle a concurrent create.
-      if (selectedRoom && monthKey) {
-        try {
-          const existingInspection = await findExistingInspection(
-            Number(selectedRoom.id),
-            monthKey,
-          );
+      if (!days.length) {
+        toast(
+          "Isi checklist pada minimal satu tanggal sebelum membuat pemeriksaan.",
+          "error",
+        );
+        return;
+      }
 
-          if (existingInspection) {
-            openExistingInspection(selectedRoom, monthKey, existingInspection);
-            return;
-          }
-        } catch (lookupError) {
-          console.error("Refresh inspection conflict:", lookupError);
+      const hasAnyAnswer = days.some((day) =>
+        day.items.some((item) => Boolean(item.status)),
+      );
+
+      if (!hasAnyAnswer) {
+        toast(
+          "Isi minimal satu penilaian sebelum membuat pemeriksaan.",
+          "error",
+        );
+        return;
+      }
+
+      const payload = {
+        room_id: Number(selectedRoom.id),
+        inspection_month: `${monthKey}-01T00:00:00Z`,
+        notes: document.getElementById("insp-notes").value.trim(),
+        days,
+      };
+
+      // The petugas signature belongs to the room's assigned Anggota. A
+      // kepala/admin creates the draft without signing it as the petugas.
+      if (canSignAsAnggota) {
+        payload.signature = signaturePayload;
+      }
+
+      button.disabled = true;
+      button.textContent = "Membuat pemeriksaan...";
+
+      try {
+        const response = await api("/inspections", {
+          method: "POST",
+          body: payload,
+        });
+
+        const inspection =
+          response?.data?.inspection ??
+          response?.data ??
+          response?.inspection ??
+          response;
+
+        if (!inspection?.id) {
+          throw new Error("Server tidak mengembalikan ID pemeriksaan.");
         }
-      }
 
-      toast(error.message || "Gagal membuat pemeriksaan.", "error");
-    } finally {
-      button.disabled = false;
-      button.textContent = "Buat Pemeriksaan";
-    }
-  });
+        toast("Pemeriksaan dan checklist berhasil dibuat.", "success");
+
+        window.location.href = `inspection-detail.html?id=${encodeURIComponent(inspection.id)}`;
+      } catch (error) {
+        console.error("Create inspection error:", error);
+
+        // Handle a concurrent create.
+        if (selectedRoom && monthKey) {
+          try {
+            const existingInspection = await findExistingInspection(
+              Number(selectedRoom.id),
+              monthKey,
+            );
+
+            if (existingInspection) {
+              openExistingInspection(
+                selectedRoom,
+                monthKey,
+                existingInspection,
+              );
+              return;
+            }
+          } catch (lookupError) {
+            console.error("Refresh inspection conflict:", lookupError);
+          }
+        }
+
+        toast(error.message || "Gagal membuat pemeriksaan.", "error");
+      } finally {
+        button.disabled = false;
+        button.textContent = "Buat Pemeriksaan";
+      }
+    });
 }
 
 // MAIN
@@ -1067,21 +1111,23 @@ async function main() {
     return;
   }
 
-  document.getElementById("btn-load-checklist").addEventListener("click", async (event) => {
-    const button = event.currentTarget;
+  document
+    .getElementById("btn-load-checklist")
+    .addEventListener("click", async (event) => {
+      const button = event.currentTarget;
 
-    button.disabled = true;
-    button.textContent = "Memuat...";
+      button.disabled = true;
+      button.textContent = "Memuat...";
 
-    try {
-      await loadChecklistForRoom();
-    } catch (error) {
-      toast(error.message || "Gagal memuat checklist.", "error");
-    } finally {
-      button.disabled = false;
-      button.textContent = "Muat Checklist";
-    }
-  });
+      try {
+        await loadChecklistForRoom();
+      } catch (error) {
+        toast(error.message || "Gagal memuat checklist.", "error");
+      } finally {
+        button.disabled = false;
+        button.textContent = "Muat Checklist";
+      }
+    });
 
   if (canSignAsAnggota) {
     setupSignatureModal();

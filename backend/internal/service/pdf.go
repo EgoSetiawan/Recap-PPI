@@ -12,6 +12,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -87,11 +88,9 @@ func (s *Service) CreateMonthlyInspectionPDF(actor *model.User, id int64) ([]byt
 
 	customFonts, err := loadFonts()
 	if err != nil {
-		fmt.Println("FONT ERROR:", err)
+		log.Printf("load report fonts: %v", err)
 		return nil, "", err
 	}
-
-	fmt.Println("FONT LOADED")
 
 	cfg := config.NewBuilder().
 		WithOrientation(orientation.Horizontal).
@@ -402,6 +401,11 @@ func signatureImageCol(size int, sig *model.Signature) core.Col {
 	)
 }
 
+// signatureDataURLHeaderRe accepts only a plain media-type header: anything
+// else (extra attributes, quotes, whitespace) is rejected so a signature can
+// never smuggle HTML attributes into the preview page.
+var signatureDataURLHeaderRe = regexp.MustCompile(`(?i)^data:image/[a-z0-9.+-]+;base64$`)
+
 // Converts a data URL to PNG.
 func signatureDataURLToPNG(dataURL string) ([]byte, error) {
 	raw := strings.TrimSpace(dataURL)
@@ -410,8 +414,8 @@ func signatureDataURLToPNG(dataURL string) ([]byte, error) {
 	}
 
 	comma := strings.IndexByte(raw, ',')
-	if comma < 0 || !strings.Contains(raw[:comma], ";base64") {
-		return nil, fmt.Errorf("signature data URL is not base64 encoded")
+	if comma < 0 || !signatureDataURLHeaderRe.MatchString(raw[:comma]) {
+		return nil, fmt.Errorf("signature data URL header is invalid")
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(raw[comma+1:])

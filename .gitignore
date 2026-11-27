@@ -52,3 +52,6 @@ frontend/docker-entrypoint.d/
 
 # local build output
 backend/bin/
+
+# QA run logs (bash scripts/qa-watch.sh)
+.qa/

@@ -1,4 +1,9 @@
-import { requireAuth, api, hasPermission, downloadInspectionPdf } from "../api.js";
+import {
+  requireAuth,
+  api,
+  hasPermission,
+  downloadInspectionPdf,
+} from "../api.js";
 
 import { confirmDialog, mountShell, toast } from "../components/shell.js";
 
@@ -316,7 +321,8 @@ async function setupDailyChecklist(inspection, options = {}) {
 
   // Existing checklist answers.
   let answers =
-    Array.isArray(inspection.checklist_detail) && inspection.checklist_detail.length
+    Array.isArray(inspection.checklist_detail) &&
+    inspection.checklist_detail.length
       ? inspection.checklist_detail
       : Array.isArray(inspection.checklist)
         ? inspection.checklist
@@ -325,13 +331,17 @@ async function setupDailyChecklist(inspection, options = {}) {
   // Drafts keyed by YYYY-MM-DD, kept in memory until saved.
   const draftDays = new Map();
 
-  const getAnswerDate = (answer) => String(answer.answer_date || "").slice(0, 10);
+  const getAnswerDate = (answer) =>
+    String(answer.answer_date || "").slice(0, 10);
 
   const savedDates = [
     ...new Set(
       answers
         .map(getAnswerDate)
-        .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && date.startsWith(`${monthKey}-`)),
+        .filter(
+          (date) =>
+            /^\d{4}-\d{2}-\d{2}$/.test(date) && date.startsWith(`${monthKey}-`),
+        ),
     ),
   ].sort();
 
@@ -787,7 +797,9 @@ async function setupDailyChecklist(inspection, options = {}) {
   async function saveAllDrafts() {
     captureVisibleDraft();
 
-    const days = [...draftDays.values()].sort((a, b) => a.answer_date.localeCompare(b.answer_date));
+    const days = [...draftDays.values()].sort((a, b) =>
+      a.answer_date.localeCompare(b.answer_date),
+    );
 
     if (days.length === 0) {
       toast("Belum ada perubahan untuk disimpan.", "error");
@@ -803,20 +815,29 @@ async function setupDailyChecklist(inspection, options = {}) {
     // Validate drafts before saving.
     for (const day of days) {
       if (!day.answer_date.startsWith(`${monthKey}-`)) {
-        toast(`Tanggal ${day.answer_date} berada di luar bulan pemeriksaan.`, "error");
+        toast(
+          `Tanggal ${day.answer_date} berada di luar bulan pemeriksaan.`,
+          "error",
+        );
 
         return false;
       }
 
       for (const item of day.items) {
-        if (!Number.isInteger(item.checklist_item_id) || item.checklist_item_id <= 0) {
+        if (
+          !Number.isInteger(item.checklist_item_id) ||
+          item.checklist_item_id <= 0
+        ) {
           toast(`Item checklist pada ${day.answer_date} tidak valid.`, "error");
 
           return false;
         }
 
         if (item.status !== null && item.status !== "GOOD") {
-          toast(`Status checklist pada ${day.answer_date} tidak valid.`, "error");
+          toast(
+            `Status checklist pada ${day.answer_date} tidak valid.`,
+            "error",
+          );
 
           return false;
         }
@@ -839,7 +860,8 @@ async function setupDailyChecklist(inspection, options = {}) {
       const refreshed = refreshedResponse?.data ?? refreshedResponse;
 
       answers =
-        Array.isArray(refreshed.checklist_detail) && refreshed.checklist_detail.length
+        Array.isArray(refreshed.checklist_detail) &&
+        refreshed.checklist_detail.length
           ? refreshed.checklist_detail
           : Array.isArray(refreshed.checklist)
             ? refreshed.checklist
@@ -980,13 +1002,16 @@ async function main() {
     signatureByRole(signatures, "ANGGOTA") || insp.inspector_signature || null;
 
   const kepalaSignature =
-    signatureByRole(signatures, "KEPALA") || insp.kepala_ruangan_signature || null;
+    signatureByRole(signatures, "KEPALA") ||
+    insp.kepala_ruangan_signature ||
+    null;
 
   const hasAnggotaSignature = Boolean(anggotaSignature);
 
   const hasKepalaSignature = Boolean(kepalaSignature);
 
-  const isAssignedInspector = Number(user.id) > 0 && Number(insp.inspector_id) === Number(user.id);
+  const isAssignedInspector =
+    Number(user.id) > 0 && Number(insp.inspector_id) === Number(user.id);
 
   // Anggota signs the petugas slot.
   const canSignAsAnggota =
@@ -995,23 +1020,32 @@ async function main() {
     !hasAnggotaSignature;
 
   // Only the assigned inspector can submit.
-  const canSubmitForReview = isDraftInspection && isAssignedInspector && hasAnggotaSignature;
+  const canSubmitForReview =
+    isDraftInspection && isAssignedInspector && hasAnggotaSignature;
 
   // Kepala signs once after submit.
   const canSignAsKepalaRuangan =
-    isKepala && isSubmittedInspection && hasAnggotaSignature && !hasKepalaSignature;
+    isKepala &&
+    isSubmittedInspection &&
+    hasAnggotaSignature &&
+    !hasKepalaSignature;
 
   // Kepala or Admin approves after both signatures.
   const canApproveInspection =
-    (isKepala || isAdmin) && isSubmittedInspection && hasAnggotaSignature && hasKepalaSignature;
+    (isKepala || isAdmin) &&
+    isSubmittedInspection &&
+    hasAnggotaSignature &&
+    hasKepalaSignature;
 
-  const canEditChecklist = isDraftInspection && (isAssignedInspector || isAdmin || isKepala);
+  const canEditChecklist =
+    isDraftInspection && (isAssignedInspector || isAdmin || isKepala);
 
   // Workflow narrative shown next to the action buttons.
   let workflowNote = "";
 
   if (isRejectedInspection) {
-    workflowNote = "Pemeriksaan ini ditolak. Hubungi kepala PPI untuk tindak lanjut.";
+    workflowNote =
+      "Pemeriksaan ini ditolak. Hubungi kepala PPI untuk tindak lanjut.";
   } else if (isApprovedInspection) {
     workflowNote = "Pemeriksaan sudah disetujui dan menjadi arsip final.";
   } else if (isDraftInspection && !hasAnggotaSignature) {
@@ -1285,7 +1319,11 @@ async function main() {
               (step, index) => `
                 <li
                   class="approval-step${
-                    step.done ? " is-done" : index === currentStepIndex ? " is-current" : ""
+                    step.done
+                      ? " is-done"
+                      : index === currentStepIndex
+                        ? " is-current"
+                        : ""
                   }"
                 >
                   <span class="approval-step-dot">
@@ -1306,7 +1344,10 @@ async function main() {
         ${workflowNote ? `<p class="approval-note">${escapeHtml(workflowNote)}</p>` : ""}
 
         ${
-          canSignAsAnggota || canSubmitForReview || canSignAsKepalaRuangan || canApproveInspection
+          canSignAsAnggota ||
+          canSubmitForReview ||
+          canSignAsKepalaRuangan ||
+          canApproveInspection
             ? `
               <div class="approval-actions">
                 ${

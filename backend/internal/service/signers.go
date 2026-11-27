@@ -1,6 +1,8 @@
 package service
 
 import (
+	"database/sql"
+	"errors"
 	"strings"
 
 	"PPI/internal/auth"
@@ -64,7 +66,8 @@ func (s *Service) resolveReportSigners(
 		out.KepalaName, out.KepalaNip = kepala.Name, kepala.Nip
 	} else {
 		name, nip, err := s.Repo.GetKetua()
-		if err != nil {
+		// A missing KEPALA user just means no fallback signer name.
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return out, err
 		}
 		out.KepalaName, out.KepalaNip = name, nip

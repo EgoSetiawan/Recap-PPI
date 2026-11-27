@@ -16,7 +16,7 @@ function signatureColumn(title, name, image, nip) {
       <div class="report-signature-title">${escapeHtml(title)}</div>
       ${
         image
-          ? `<img class="report-signature-image" src="${image}" alt="Tanda tangan ${escapeHtml(title)}" />`
+          ? `<img class="report-signature-image" src="${escapeHtml(image)}" alt="Tanda tangan ${escapeHtml(title)}" />`
           : `<div class="report-signature-empty">Belum ditandatangani</div>`
       }
       <div class="report-signature-name">${escapeHtml(name || "-")}</div>
@@ -40,7 +40,8 @@ function renderMatrix(data) {
     .map((item, index) => {
       const cells = days
         .map((day) => {
-          const done = data.answers?.[String(day)]?.[String(item.id)] === "GOOD";
+          const done =
+            data.answers?.[String(day)]?.[String(item.id)] === "GOOD";
           return `<td class="col-day${done ? " is-done" : ""}">${
             done ? CHECK_MARK : ""
           }</td>`;

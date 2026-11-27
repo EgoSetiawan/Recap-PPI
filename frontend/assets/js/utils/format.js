@@ -17,7 +17,11 @@ export function formatDateShort(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /** Month + year only — used for inspection periods. */

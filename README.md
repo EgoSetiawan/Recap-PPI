@@ -13,7 +13,7 @@
 ```text
 backend/    # Go API and database
 frontend/   # Web interface
-mockon/     # Seed data
+mockoon/    # Seed data (seed.json; mounted read-only into the API container)
 ```
 
 ## Frontend styling

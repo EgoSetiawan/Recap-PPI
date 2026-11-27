@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -58,7 +59,9 @@ func (h *Handler) Logout(c *gin.Context) {
 	if expTime.IsZero() {
 		expTime = time.Now().Add(24 * time.Hour)
 	}
-	_ = h.Svc.Logout(jtiStr, expTime)
+	if err := h.Svc.Logout(jtiStr, expTime); err != nil {
+		log.Printf("logout blacklist: %v", err)
+	}
 	response.OK(c, nil, "Logout berhasil")
 }
 
@@ -89,7 +92,11 @@ func (h *Handler) CreateInspection(c *gin.Context) {
 }
 
 func (h *Handler) GetInspection(c *gin.Context) {
-	id, _ := parseID(c, "id")
+	id, err := parseID(c, "id")
+	if err != nil || id <= 0 {
+		response.FailCode(c, "VALIDATION_ERROR", "Invalid id", http.StatusUnprocessableEntity)
+		return
+	}
 	ins, err := h.Svc.GetInspection(middleware.CurrentUser(c), id)
 	if err != nil {
 		response.Fail(c, err)
@@ -144,27 +151,11 @@ func (h *Handler) listInspections(c *gin.Context, status string, excludeDraft bo
 		roomID,
 		status,
 		month,
+		excludeDraft,
 	)
 	if err != nil {
 		response.Fail(c, err)
 		return
-	}
-
-	if excludeDraft {
-		filtered := make([]model.Inspection, 0, len(list))
-
-		for _, inspection := range list {
-			if strings.EqualFold(
-				strings.TrimSpace(inspection.Status),
-				"DRAFT",
-			) {
-				continue
-			}
-
-			filtered = append(filtered, inspection)
-		}
-
-		list = filtered
 	}
 
 	response.OK(c, list, "Inspections retrieved")
@@ -585,7 +576,7 @@ func (h *Handler) SaveInspectionDates(c *gin.Context) {
 
 func (h *Handler) AddKepalaSign(c *gin.Context) {
 	id, err := parseID(c, "id")
-	if err != nil {
+	if err != nil || id <= 0 {
 		response.FailCode(c, "VALIDATION_ERROR", "Invalid id", http.StatusUnprocessableEntity)
 		return
 	}
@@ -613,7 +604,7 @@ func (h *Handler) AddKepalaSign(c *gin.Context) {
 
 func (h *Handler) AddAnggotaSign(c *gin.Context) {
 	id, err := parseID(c, "id")
-	if err != nil {
+	if err != nil || id <= 0 {
 		response.FailCode(
 			c,
 			"VALIDATION_ERROR",
@@ -646,9 +637,9 @@ func (h *Handler) AddAnggotaSign(c *gin.Context) {
 	response.OK(c, sig, "Tanda tangan Anggota berhasil disimpan")
 }
 
-func (h *Handler) SumbitHandler(c *gin.Context) {
+func (h *Handler) SubmitHandler(c *gin.Context) {
 	id, err := parseID(c, "id")
-	if err != nil {
+	if err != nil || id <= 0 {
 		response.FailCode(
 			c,
 			"VALIDATION_ERROR",

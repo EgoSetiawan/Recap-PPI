@@ -2,7 +2,11 @@ import { requireAuth, api } from "../api.js";
 import { mountShell, toast } from "../components/shell.js";
 import { escapeHtml, formatMonth, statusBadge } from "../utils/format.js";
 import { btnSecondary, btnSm, tableWrap } from "../ui.js";
-import { paginate, renderPagination, emptyPagination } from "../components/pagination.js";
+import {
+  paginate,
+  renderPagination,
+  emptyPagination,
+} from "../components/pagination.js";
 
 async function main() {
   const user = await requireAuth();
@@ -45,10 +49,12 @@ async function main() {
               result.items.length
                 ? result.items
                     .map((inspection) => {
-                      const roomName = inspection.room?.name || `Room #${inspection.room_id}`;
+                      const roomName =
+                        inspection.room?.name || `Room #${inspection.room_id}`;
 
                       const inspectorName =
-                        inspection.inspector_name || `User #${inspection.inspector_id}`;
+                        inspection.inspector_name ||
+                        `User #${inspection.inspector_id}`;
 
                       return `
                         <tr>

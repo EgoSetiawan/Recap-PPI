@@ -51,19 +51,6 @@ type CreateInspectionInput struct {
 	Signature *SignaturePayload `json:"signature"`
 }
 
-type SubmitInspectionInput struct {
-	Signature *SignaturePayload `json:"signature" binding:"required"`
-}
-
-type ApproveInspectionInput struct {
-	Signature *SignaturePayload `json:"signature" binding:"required"`
-}
-
-type SaveChecklistInput struct {
-	AnswerDate time.Time               `json:"answer_date"`
-	Items      []model.ChecklistAnswer `json:"items"`
-}
-
 const maxSignatureDataURLBytes = 2 << 20 // 2 MiB
 
 func validSignatureImage(url string) bool {
@@ -657,87 +644,11 @@ func isInspectionRoomMonthConflict(err error) bool {
 		pgErr.ConstraintName == "inspections_active_room_month_idx"
 }
 
-func (s *Service) SaveChecklist(actor *model.User, inspectionID int64, in SaveChecklistInput) (*model.Inspection, error) {
-	if actor == nil {
-		return nil, response.Err(
-			"UNAUTHORIZED",
-			"Unauthorized",
-			http.StatusUnauthorized,
-		)
-	}
-
-	ins, err := s.Repo.GetInspection(inspectionID)
-	if err != nil {
-		return nil, err
-	}
-
-	if ins == nil {
-		return nil, response.Err(
-			"NOT_FOUND",
-			"Inspection not found",
-			http.StatusNotFound,
-		)
-	}
-
-	if !auth.IsAnggota(actor.Role) {
-		return nil, response.Err(
-			"FORBIDDEN",
-			"Hanya Anggota yang dapat membuat pemeriksaan",
-			http.StatusForbidden,
-		)
-	}
-
-	if ins.InspectorID != actor.ID {
-		return nil, response.Err(
-			"FORBIDDEN",
-			"Hanya pemeriksa yang membuat pemeriksaan yang dapat mengubahnya",
-			http.StatusForbidden,
-		)
-	}
-
-	if err := assertRoomAccess(actor, ins.RoomID); err != nil {
-		return nil, err
-	}
-
-	if ins.Status != StatusDraft {
-		return nil, response.Err(
-			"VALIDATION_ERROR",
-			"Pemeriksaan sudah tidak dapat diubah",
-			http.StatusUnprocessableEntity,
-		)
-	}
-
-	if in.AnswerDate.IsZero() {
-		return nil, response.Err(
-			"VALIDATION_ERROR",
-			"Tanggal pemeriksaan wajib diisi",
-			http.StatusUnprocessableEntity,
-		)
-	}
-
-	answerDate := in.AnswerDate
-
-	for i := range in.Items {
-		in.Items[i].InspectionID = ins.ID
-		in.Items[i].AnswerDate = answerDate
-	}
-
-	if err := s.Repo.ReplaceChecklistForDate(
-		ins.ID,
-		answerDate,
-		in.Items,
-	); err != nil {
-		return nil, err
-	}
-
-	return s.Repo.GetInspection(ins.ID)
-}
-
 func (s *Service) GetInspection(actor *model.User, id int64) (*model.Inspection, error) {
 	return s.getInspectionForActor(actor, id)
 }
 
-func (s *Service) ListInspections(actor *model.User, roomID *int64, status string, month *time.Time) ([]model.Inspection, error) {
+func (s *Service) ListInspections(actor *model.User, roomID *int64, status string, month *time.Time, excludeDraft bool) ([]model.Inspection, error) {
 	if actor == nil {
 		return nil, response.Err(
 			"UNAUTHORIZED",
@@ -747,10 +658,11 @@ func (s *Service) ListInspections(actor *model.User, roomID *int64, status strin
 	}
 	scopeIDs := scopeRoomIDs(actor)
 	return s.Repo.ListInspections(repository.InspectionFilter{
-		ScopeIDs: scopeIDs,
-		RoomID:   roomID,
-		Status:   status,
-		Month:    month,
+		ScopeIDs:     scopeIDs,
+		RoomID:       roomID,
+		Status:       status,
+		ExcludeDraft: excludeDraft,
+		Month:        month,
 	})
 }
 
@@ -900,6 +812,10 @@ func (s *Service) ReplaceChecklistForDate(actor *model.User, inspectionID int64,
 			"Hanya petugas pemeriksa yang ditugaskan yang dapat mengubah checklist",
 			http.StatusForbidden,
 		)
+	}
+	// The actor must still cover the inspection's room.
+	if err := assertRoomAccess(actor, ins.RoomID); err != nil {
+		return err
 	}
 	// Check the inspection month.
 	if ins.InspectionMonth.IsZero() {

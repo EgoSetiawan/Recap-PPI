@@ -10,9 +10,7 @@
     "tailwindcss": "^4.3.3"
   },
   "scripts": {
-    "mock": "node mockoon/server.js",
     "frontend": "npx --yes serve frontend -p 5173",
-    "start": "node mockoon/server.js",
     "api": "cd backend && go run ./cmd/api",
     "db:up": "docker compose up -d db",
     "db:down": "docker compose stop db",
@@ -27,6 +25,8 @@
     "qa:backend": "go -C backend test ./... && go -C backend vet ./...",
     "qa:frontend": "eslint . && prettier . --check",
     "qa": "go -C backend test ./... && go -C backend vet ./... && eslint . && prettier . --check",
+    "qa:watch": "bash scripts/qa-watch.sh",
+    "qa:watch:verbose": "bash scripts/qa-watch.sh --verbose",
     "css:watch": "bunx @tailwindcss/cli -i ./frontend/assets/css/input.css -o ./frontend/assets/css/app.css --watch",
     "css:theme": "bunx @tailwindcss/cli -i ./frontend/assets/css/theme.src.css -o ./frontend/assets/css/theme.css",
     "css:theme:watch": "bunx @tailwindcss/cli -i ./frontend/assets/css/theme.src.css -o ./frontend/assets/css/theme.css --watch"

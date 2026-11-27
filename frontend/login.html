@@ -31,8 +31,8 @@
         <div>
           <h1>Kendali mutu PPI, <em>dalam satu layar.</em></h1>
           <p>
-            Catat pemeriksaan ruangan, pantau temuan kritis, dan kumpulkan tanda tangan digital —
-            tanpa tumpukan kertas.
+            Catat pemeriksaan ruangan, pantau temuan kritis, dan kumpulkan tanda
+            tangan digital — tanpa tumpukan kertas.
           </p>
 
           <ul class="hero-features">
@@ -64,7 +64,8 @@
                 <path d="M22 11.1V12a10 10 0 1 1-5.9-9.1" />
                 <path d="m9 11 3 3L22 4" />
               </svg>
-              Tanda tangan IPCLN ruangan &amp; Kepala Komite IPCLN langsung di perangkat.
+              Tanda tangan IPCLN ruangan &amp; Kepala Komite IPCLN langsung di
+              perangkat.
             </li>
             <li>
               <svg
@@ -147,16 +148,23 @@
                     stroke-linejoin="round"
                     aria-hidden="true"
                   >
-                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+                    <path
+                      d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"
+                    />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
                 </button>
               </div>
             </div>
 
-            <button class="btn" type="submit" style="width: 100%">Masuk ke dashboard</button>
+            <button class="btn" type="submit" style="width: 100%">
+              Masuk ke dashboard
+            </button>
 
-            <p id="login-error" class="hidden error-text text-danger mt-2.5 text-[13px]"></p>
+            <p
+              id="login-error"
+              class="hidden error-text text-danger mt-2.5 text-[13px]"
+            ></p>
           </form>
 
           <p class="login-foot">
@@ -173,7 +181,8 @@
 
       document.querySelectorAll("[data-email]").forEach((btn) => {
         btn.addEventListener("click", () => {
-          document.getElementById("username").value = btn.getAttribute("data-email");
+          document.getElementById("username").value =
+            btn.getAttribute("data-email");
           document.getElementById("password").value = "0";
         });
       });
@@ -185,27 +194,36 @@
         const show = passwordInput.type === "password";
         passwordInput.type = show ? "text" : "password";
         toggle.setAttribute("aria-pressed", String(show));
-        toggle.setAttribute("aria-label", show ? "Sembunyikan password" : "Tampilkan password");
+        toggle.setAttribute(
+          "aria-label",
+          show ? "Sembunyikan password" : "Tampilkan password",
+        );
       });
 
-      document.getElementById("login-form").addEventListener("submit", async (e) => {
-        e.preventDefault();
+      document
+        .getElementById("login-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
 
-        const fd = new FormData(e.target);
-        const err = document.getElementById("login-error");
+          const fd = new FormData(e.target);
+          const err = document.getElementById("login-error");
 
-        err.classList.add("hidden");
+          err.classList.add("hidden");
 
-        try {
-          await login(String(fd.get("username")), String(fd.get("password")));
+          try {
+            await login(String(fd.get("username")), String(fd.get("password")));
 
-          sessionStorage.setItem("flash_toast", "Login berhasil. Selamat bekerja.");
-          location.href = "pages/dashboard.html";
-        } catch (ex) {
-          err.textContent = ex.message || "Login gagal. Periksa email/username dan password.";
-          err.classList.remove("hidden");
-        }
-      });
+            sessionStorage.setItem(
+              "flash_toast",
+              "Login berhasil. Selamat bekerja.",
+            );
+            location.href = "pages/dashboard.html";
+          } catch (ex) {
+            err.textContent =
+              ex.message || "Login gagal. Periksa email/username dan password.";
+            err.classList.remove("hidden");
+          }
+        });
     </script>
   </body>
 </html>
